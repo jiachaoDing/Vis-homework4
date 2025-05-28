@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import FriendshipParadox from '../views/FriendshipParadox.vue'
 import SchellingModel from '../views/SchellingModel.vue'
 import PageRank from '../views/PageRank.vue'
@@ -38,7 +38,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes
 })
 
