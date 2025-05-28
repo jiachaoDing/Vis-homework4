@@ -3,8 +3,36 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'index.html'
+      - '*.vue'
+      - '*.js'
+      - '*.ts'
+      - '*.css'
+      - '*.scss'
+      - '*.less'
+      - '.github/workflows/deploy.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'index.html'
+      - '*.vue'
+      - '*.js'
+      - '*.ts'
+      - '*.css'
+      - '*.scss'
+      - '*.less'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   build-and-deploy:
