@@ -1,374 +1,2103 @@
 <template>
-  <div class="network-cascade">
-    <el-card>
-      <template #header>
-        <h2>从知晓到行动的模拟</h2>
-        <p>模拟新事物在网络中的传播扩散过程</p>
-      </template>
-      
-      <el-row :gutter="20">
-        <el-col :span="8">
-          <el-card shadow="never">
-            <h3>参数设置</h3>
-            <el-form label-width="120px">
-              <el-form-item label="节点数量">
-                <el-slider v-model="nodeCount" :min="20" :max="100" show-input />
+  <div class="network-cascade-container">
+    <!-- 顶部控制面板 -->
+    <el-row class="control-panel" :gutter="20">
+      <el-col :span="24">
+        <el-card class="control-card">
+          <template #header>
+            <div class="card-header">
+              <div class="header-left">
+                <h3>网络级联控制面板</h3>
+                <el-tooltip
+                  effect="dark"
+                  placement="bottom"
+                  max-width="400"
+                >
+                  <template #content>
+                    <div class="cascade-help">
+                      <h4>什么是级联行为？</h4>
+                      <p>级联行为是指在网络中，个体的行为选择会受到邻居节点的影响，并可能引发连锁反应的现象。这种行为在社交网络、信息传播、创新采纳等领域普遍存在。</p>
+                      
+                      <h4>级联过程的特点：</h4>
+                      <ul>
+                        <li><b>阈值效应</b>：个体只有当周围足够比例的邻居采纳后才会跟随采纳</li>
+                        <li><b>传播延迟</b>：从知晓到采纳之间存在时间延迟</li>
+                        <li><b>局部影响</b>：个体主要受到直接相连节点的影响</li>
+                        <li><b>群体效应</b>：可能出现局部群体的集体采纳现象</li>
+                      </ul>
+
+                      <h4>关键要素：</h4>
+                      <ul>
+                        <li><b>采纳阈值</b>：触发采纳所需的最小邻居采纳比例</li>
+                        <li><b>网络结构</b>：节点间的连接方式影响传播路径</li>
+                        <li><b>初始种子</b>：最早采纳的节点，影响整体传播效果</li>
+                        <li><b>社区结构</b>：密集连接的群组影响传播速度和范围</li>
+                      </ul>
+
+                      <h4>应用场景：</h4>
+                      <ul>
+                        <li>新产品市场推广</li>
+                        <li>社交媒体信息传播</li>
+                        <li>创新技术采纳</li>
+                        <li>社会行为传染</li>
+                      </ul>
+                    </div>
+                  </template>
+                  <el-button
+                    type="info"
+                    plain
+                    size="small"
+                    class="help-button"
+                  >
+                    <el-icon><QuestionFilled /></el-icon>
+                    什么是级联行为？
+                  </el-button>
+                </el-tooltip>
+              </div>
+              <div class="control-buttons">
+                <el-button type="primary" @click="startSimulation">开始模拟</el-button>
+                <el-button type="warning" @click="pauseSimulation">暂停</el-button>
+                <el-button @click="resetSimulation">重置</el-button>
+              </div>
+            </div>
+          </template>
+          <el-row :gutter="20">
+            <el-col :span="6">
+              <el-form-item label="网络规模">
+                <el-slider v-model="networkSize" :min="20" :max="100" @change="updateNetwork"/>
               </el-form-item>
+            </el-col>
+            <el-col :span="6">
               <el-form-item label="采纳阈值">
-                <el-slider v-model="threshold" :min="0.1" :max="0.9" :step="0.1" show-input />
+                <el-slider v-model="adoptionThreshold" :min="0.1" :max="0.9" :step="0.1"/>
               </el-form-item>
+            </el-col>
+            <el-col :span="6">
+              <el-form-item label="传播延时">
+                <el-slider v-model="propagationDelay" :min="1" :max="10"/>
+              </el-form-item>
+            </el-col>
+            <el-col :span="6">
               <el-form-item label="初始种子数">
-                <el-slider v-model="seedCount" :min="1" :max="10" show-input />
+                <el-input-number v-model="seedCount" :min="1" :max="10"/>
               </el-form-item>
-              <el-form-item label="延时范围">
-                <el-slider v-model="delayRange" :min="1" :max="10" show-input />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="generateNetwork">生成网络</el-button>
-                <el-button @click="startCascade" :disabled="isRunning">开始扩散</el-button>
-                <el-button @click="stopCascade">停止</el-button>
-                <el-button @click="resetCascade">重置</el-button>
-              </el-form-item>
-            </el-form>
-          </el-card>
-          
-          <el-card shadow="never" style="margin-top: 20px;">
-            <h3>扩散统计</h3>
-            <el-descriptions :column="1" border>
-              <el-descriptions-item label="当前步数">{{ currentStep }}</el-descriptions-item>
-              <el-descriptions-item label="已采纳节点">{{ adoptedCount }}</el-descriptions-item>
-              <el-descriptions-item label="采纳率">{{ adoptionRate }}%</el-descriptions-item>
-              <el-descriptions-item label="平均延时">{{ averageDelay }}</el-descriptions-item>
-            </el-descriptions>
-          </el-card>
-        </el-col>
-        
-        <el-col :span="16">
-          <el-card shadow="never">
-            <h3>扩散可视化</h3>
-            <div ref="cascadeContainer" class="cascade-container"></div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </el-card>
+            </el-col>
+          </el-row>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 主要内容区域 -->
+    <el-row :gutter="20" class="main-content">
+      <!-- 左侧：网络可视化 -->
+      <el-col :span="16">
+        <el-card class="visualization-card">
+          <template #header>
+            <div class="card-header">
+              <h3>网络级联过程</h3>
+              <div class="view-controls">
+                <el-tooltip
+                  effect="dark"
+                  placement="top"
+                >
+                  <template #content>
+                    <div>
+                      <p><b>网络视图</b>：展示节点的传播状态，使用颜色区分未知晓（灰色）、已知晓（黄色）和已采纳（红色）的节点</p>
+                      <p><b>社区视图</b>：展示网络中的社区结构，相同颜色的节点属于同一社区，帮助理解信息在不同社区间的传播特征</p>
+                    </div>
+                  </template>
+                  <el-radio-group v-model="visualMode" size="small">
+                    <el-radio-button label="network">
+                      <el-icon class="view-icon"><Monitor /></el-icon>
+                      网络视图
+                    </el-radio-button>
+                    <el-radio-button label="community">
+                      <el-icon class="view-icon"><Share /></el-icon>
+                      社区视图
+                    </el-radio-button>
+                  </el-radio-group>
+                </el-tooltip>
+                <el-tooltip
+                  effect="dark"
+                  placement="top"
+                  max-width="400"
+                >
+                  <template #content>
+                    <div class="community-help">
+                      <h4>什么是网络社区？</h4>
+                      <p>在网络级联过程中，社区是指网络中紧密连接的节点群组。这些节点之间的连接较为密集，而与其他群组之间的连接较为稀疏。</p>
+                      <h4>社区的重要性：</h4>
+                      <ul>
+                        <li><b>信息传播</b>：社区结构影响信息的传播速度和范围。信息在社区内部传播较快，跨社区传播较慢。</li>
+                        <li><b>采纳行为</b>：同一社区的成员往往表现出相似的采纳行为，这与社会影响和群体压力有关。</li>
+                        <li><b>关键节点</b>：连接不同社区的节点（桥接节点）在信息传播中起着重要作用。</li>
+                      </ul>
+                      <h4>应用价值：</h4>
+                      <p>理解网络的社区结构有助于：</p>
+                      <ul>
+                        <li>预测信息传播路径</li>
+                        <li>识别关键影响者</li>
+                        <li>优化传播策略</li>
+                        <li>评估采纳阻力</li>
+                      </ul>
+                    </div>
+                  </template>
+                  <el-button
+                    type="info"
+                    plain
+                    size="small"
+                    class="help-button"
+                  >
+                    <el-icon><QuestionFilled /></el-icon>
+                    什么是社区？
+                  </el-button>
+                </el-tooltip>
+              </div>
+            </div>
+          </template>
+          <div ref="networkContainer" class="network-container"></div>
+          <!-- 图例说明 -->
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: #gray"></div>
+              <span>未知晓</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: #yellow"></div>
+              <span>已知晓</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: #red"></div>
+              <span>已采纳</span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 右侧：统计与分析 -->
+      <el-col :span="8">
+                <el-card class="teaching-card">
+          <template #header>
+            <div class="card-header">
+              <h3>教学控制</h3>
+            </div>
+          </template>
+          <div class="teaching-tools">
+            <el-button-group>
+              <el-button @click="highlightInfluencers">
+                <el-icon><Star /></el-icon>影响力节点
+              </el-button>
+              <el-button @click="toggleCommunityView">
+                <el-icon><Grid /></el-icon>社区结构
+              </el-button>
+            </el-button-group>
+            <!-- 更新教学步骤显示 -->
+            <div class="teaching-progress">
+              <el-steps :active="teachingStep" finish-status="success" simple>
+                <el-step 
+                  v-for="(step, index) in [
+                    '初始状态',
+                    '知晓阶段',
+                    '采纳过程',
+                    '稳定状态'
+                  ]" 
+                  :key="index"
+                  :title="step"
+                >
+                  <template #title>
+                    <el-tooltip
+                      effect="dark"
+                      placement="top"
+                    >
+                      <template #content>
+                        <div class="step-tooltip">
+                          <p>{{ [
+                            '网络中的节点尚未接触到创新',
+                            '部分节点开始知晓创新信息',
+                            '创新在网络中快速传播',
+                            '网络达到稳定状态'
+                          ][index] }}</p>
+                          <p v-if="index === teachingStep">
+                            {{ 
+                              index === 0 ? `当前所有节点未知晓` :
+                              index === 1 ? `当前已知晓比例: ${((stateData.aware + stateData.adopted) / nodes.length * 100).toFixed(1)}%` :
+                              index === 2 ? `当前采纳比例: ${(stateData.adopted / nodes.length * 100).toFixed(1)}%` :
+                              `最终采纳比例: ${(stateData.adopted / nodes.length * 100).toFixed(1)}%`
+                            }}
+                          </p>
+                        </div>
+                      </template>
+                      <span :class="{ 'current-step': index === teachingStep }">{{ step }}</span>
+                    </el-tooltip>
+                  </template>
+                </el-step>
+              </el-steps>
+            </div>
+          </div>
+        </el-card>
+        <el-card class="stats-card">
+          <template #header>
+            <div class="card-header">
+              <h3>传播统计</h3>
+              <el-switch v-model="autoUpdate" active-text="自动更新"/>
+            </div>
+          </template>
+          <!-- S型增长曲线 -->
+          <div ref="growthChart" class="chart-container"></div>
+          <!-- 状态分布 -->
+          <div ref="stateChart" class="chart-container"></div>
+          <!-- 关键指标 -->
+          <div class="key-metrics">
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <div class="metric-item">
+                  <div class="metric-title">传播速度</div>
+                  <div class="metric-value">
+                    <span class="number">{{ propagationSpeed }}</span>
+                  </div>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="metric-item">
+                  <div class="metric-title">采纳率</div>
+                  <div class="metric-value">
+                    <span class="number">{{ adoptionRate }}</span>
+                    <span class="unit">%</span>
+                  </div>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="metric-item">
+                  <div class="metric-title">预计完成</div>
+                  <div class="metric-value">
+                    <span class="number">{{ estimatedCompletion }}</span>
+                    <span class="unit">步</span>
+                  </div>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+        </el-card>
+
+        <!-- 教学控制面板 -->
+      </el-col>
+    </el-row>
+
+    <!-- 结果对话框 -->
+    <el-dialog
+      v-model="showResultDialog"
+      title="模拟结果分析"
+      width="60%"
+      :modal="true"
+      :close-on-click-modal="true"
+      :show-close="true"
+      destroy-on-close
+    >
+      <div class="simulation-results">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <div class="result-section">
+              <h4>总体统计</h4>
+              <ul>
+                <li>总步数：{{ simulationResults.totalSteps }} 步</li>
+                <li>最终采纳率：{{ simulationResults.adoptionRate }}%</li>
+                <li>平均传播速度：{{ simulationResults.averageSpeed }} 节点/步</li>
+                <li>增长峰值：第 {{ simulationResults.peakStep }} 步 ({{ simulationResults.peakRate }}%)</li>
+              </ul>
+            </div>
+          </el-col>
+          <el-col :span="12">
+            <div class="result-section">
+              <h4>关键节点</h4>
+              <ul>
+                <li v-for="node in simulationResults.influentialNodes" :key="node.id">
+                  节点 {{ node.id }}：{{ node.influenceText }}
+                  <el-tooltip effect="dark" placement="right">
+                    <template #content>
+                      <div>
+                        <p>影响效率：{{ (node.efficiency * 100).toFixed(1) }}%</p>
+                        <p>采纳时间：第{{ node.adoptionTime }}步</p>
+                      </div>
+                    </template>
+                    <el-progress 
+                      :percentage="(node.influenced / node.neighbors * 100)" 
+                      :format="format => `${format}%`"
+                      :stroke-width="10"
+                      :status="node.efficiency >= 0.5 ? 'success' : 'warning'"
+                    />
+                  </el-tooltip>
+                </li>
+              </ul>
+            </div>
+          </el-col>
+        </el-row>
+
+        <div class="result-section" v-if="simulationResults.communityStats.length > 0">
+          <h4>社区分析</h4>
+          <el-table :data="simulationResults.communityStats" style="width: 100%">
+            <el-table-column prop="id" label="社区" width="80" />
+            <el-table-column prop="size" label="规模" width="100" />
+            <el-table-column prop="adopted" label="采纳数" width="100" />
+            <el-table-column prop="adoptionRate" label="采纳率">
+              <template #default="{ row }">
+                <el-progress 
+                  :percentage="Number(row.adoptionRate)"
+                  :format="format => `${format}%`"
+                  :stroke-width="10"
+                  :status="Number(row.adoptionRate) >= 80 ? 'success' : 'warning'"
+                />
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showResultDialog = false">关闭</el-button>
+          <el-button type="primary" @click="resetSimulation">重新开始</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
+import { ref, onMounted, watch } from 'vue'
 import * as d3 from 'd3'
+import { ElMessage } from 'element-plus'
+import { Monitor, Share, QuestionFilled } from '@element-plus/icons-vue'
 
 export default {
   name: 'NetworkCascade',
-  data() {
-    return {
-      nodeCount: 50,
-      threshold: 0.3,
-      seedCount: 3,
-      delayRange: 5,
-      nodes: [],
-      links: [],
-      currentStep: 0,
-      adoptedCount: 0,
-      adoptionRate: 0,
-      averageDelay: 0,
-      isRunning: false,
-      intervalId: null
-    }
+  components: {
+    Monitor,
+    Share,
+    QuestionFilled
   },
-  mounted() {
-    this.generateNetwork()
-  },
-  methods: {
-    generateNetwork() {
-      // 生成节点
-      this.nodes = Array.from({ length: this.nodeCount }, (_, i) => ({
-        id: i,
-        state: 'susceptible', // susceptible, adopted, aware
-        adoptionTime: null,
-        delay: Math.floor(Math.random() * this.delayRange) + 1,
-        awarenessTime: null,
-        neighbors: []
-      }))
-      
-      // 生成小世界网络
-      this.generateSmallWorldNetwork()
-      
-      // 计算邻居关系
-      this.calculateNeighbors()
-      
-      this.renderNetwork()
-    },
+  setup() {
+    // 状态变量
+    const networkSize = ref(50)
+    const adoptionThreshold = ref(0.3)
+    const propagationDelay = ref(3)
+    const seedCount = ref(3)
+    const visualMode = ref('network')
+    const autoUpdate = ref(true)
+    const teachingStep = ref(0)
     
-    generateSmallWorldNetwork() {
-      this.links = []
-      const k = 4 // 每个节点的初始连接数
+    // DOM引用
+    const networkContainer = ref(null)
+    const growthChart = ref(null)
+    const stateChart = ref(null)
+
+    // 模拟数据
+    const propagationSpeed = ref(0)
+    const adoptionRate = ref(0)
+    const estimatedCompletion = ref(0)
+
+    // 常量定义
+    const width = 800
+    const height = 600
+    const NODE_RADIUS = 6
+    const LINK_DISTANCE = 50
+    const REWIRING_PROBABILITY = 0.3
+
+    // 网络数据结构
+    let simulation = null
+    let nodes = []
+    let links = []
+    let svg = null
+    let linkElements = null
+    let nodeElements = null
+
+    // 模拟控制变量
+    const isSimulating = ref(false)
+    const simulationStep = ref(0)
+    const simulationInterval = ref(null)
+    const SIMULATION_SPEED = 1000 // 模拟速度（毫秒）
+
+    // 模拟状态数据
+    const stateData = ref({
+      unaware: 0,
+      aware: 0,
+      adopted: 0,
+      history: [] // 存储每一步的状态数据
+    })
+
+    // 图表尺寸常量
+    const CHART_MARGIN = { top: 20, right: 20, bottom: 30, left: 40 }
+    const CHART_WIDTH = 300
+    const CHART_HEIGHT = 200
+    const INNER_WIDTH = CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right
+    const INNER_HEIGHT = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom
+
+    // 图表引用
+    let growthSvg = null
+    let stateSvg = null
+    let growthLine = null
+    let growthXAxis = null
+    let growthYAxis = null
+    let pieChart = null
+
+    // 教学功能状态
+    const teachingMode = ref('')
+    const highlightedNodes = ref(new Set())
+    const communityData = ref([])
+
+    // 在 setup 函数中添加对话框相关的状态
+    const showResultDialog = ref(false)
+    const simulationResults = ref({
+      totalSteps: 0,
+      adoptionRate: 0,
+      averageSpeed: 0,
+      peakStep: 0,
+      peakRate: 0,
+      communityStats: [],
+      influentialNodes: []
+    })
+
+    // 初始化函数
+    onMounted(() => {
+      initializeNetwork()
+      initializeCharts()
+    })
+
+    // 生成小世界网络
+    const generateSmallWorldNetwork = () => {
+      nodes = []
+      links = []
       
-      // 创建环形连接
-      for (let i = 0; i < this.nodeCount; i++) {
-        for (let j = 1; j <= k / 2; j++) {
-          const target = (i + j) % this.nodeCount
-          this.links.push({ source: i, target })
+      // 创建节点
+      for (let i = 0; i < networkSize.value; i++) {
+        nodes.push({
+          id: i,
+          state: 'unaware',
+          neighbors: [],
+          awarenessTime: null,
+          adoptionTime: null,
+          delay: Math.floor(Math.random() * propagationDelay.value) + 1
+        })
+      }
+
+      // 创建规则环形连接
+      const k = 4 // 每个节点的初始邻居数
+      for (let i = 0; i < networkSize.value; i++) {
+        for (let j = 1; j <= k/2; j++) {
+          const target = (i + j) % networkSize.value
+          links.push({
+            source: i,
+            target: target,
+            id: `${i}-${target}`
+          })
+          nodes[i].neighbors.push(target)
+          nodes[target].neighbors.push(i)
         }
       }
-      
+
       // 随机重连
-      const rewireProb = 0.3
-      this.links = this.links.map(link => {
-        if (Math.random() < rewireProb) {
+      links = links.map(link => {
+        if (Math.random() < REWIRING_PROBABILITY) {
           let newTarget
           do {
-            newTarget = Math.floor(Math.random() * this.nodeCount)
-          } while (newTarget === link.source)
+            newTarget = Math.floor(Math.random() * networkSize.value)
+          } while (newTarget === link.source || 
+                   nodes[link.source].neighbors.includes(newTarget))
           
-          return { source: link.source, target: newTarget }
+          // 更新邻居关系
+          const oldTarget = link.target
+          nodes[link.source].neighbors = nodes[link.source].neighbors.filter(n => n !== oldTarget)
+          nodes[oldTarget].neighbors = nodes[oldTarget].neighbors.filter(n => n !== link.source)
+          
+          nodes[link.source].neighbors.push(newTarget)
+          nodes[newTarget].neighbors.push(link.source)
+          
+          return {
+            source: link.source,
+            target: newTarget,
+            id: `${link.source}-${newTarget}`
+          }
         }
         return link
       })
-    },
-    
-    calculateNeighbors() {
-      // 重置邻居列表
-      this.nodes.forEach(node => node.neighbors = [])
-      
-      // 构建邻居关系
-      this.links.forEach(link => {
-        this.nodes[link.source].neighbors.push(link.target)
-        this.nodes[link.target].neighbors.push(link.source)
+    }
+
+    // 网络初始化
+    const initializeNetwork = () => {
+      // 清除现有的SVG
+      if (networkContainer.value) {
+        d3.select(networkContainer.value).selectAll("*").remove()
+      }
+
+      // 生成网络数据
+      generateSmallWorldNetwork()
+
+      // 创建SVG元素
+      svg = d3.select(networkContainer.value)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', [-width/2, -height/2, width, height])
+
+      // 创建箭头标记
+      svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', NODE_RADIUS + 9)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#999')
+
+      // 创建力导向图
+      simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links)
+          .id(d => d.id)
+          .distance(LINK_DISTANCE))
+        .force('charge', d3.forceManyBody().strength(-100))
+        .force('center', d3.forceCenter())
+        .force('collision', d3.forceCollide().radius(NODE_RADIUS * 1.5))
+
+      // 添加连接
+      linkElements = svg.append('g')
+        .selectAll('line')
+        .data(links)
+        .join('line')
+        .attr('stroke', '#999')
+        .attr('stroke-width', 1)
+        .attr('stroke-opacity', 0.6)
+        .attr('marker-end', 'url(#arrowhead)')
+
+      // 添加节点
+      nodeElements = svg.append('g')
+        .selectAll('circle')
+        .data(nodes)
+        .join('circle')
+        .attr('r', NODE_RADIUS)
+        .attr('fill', d => getNodeColor(d.state))
+        .call(drag(simulation))
+
+      // 添加节点悬停效果
+      nodeElements
+        .append('title')
+        .text(d => `节点 ${d.id}\n状态: ${getStateText(d.state)}\n邻居数: ${d.neighbors.length}`)
+
+      // 更新力导向图
+      simulation.on('tick', () => {
+        linkElements
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y)
+
+        nodeElements
+          .attr('cx', d => d.x)
+          .attr('cy', d => d.y)
       })
-    },
-    
-    startCascade() {
-      this.resetCascade()
+    }
+
+    // 拖拽功能
+    const drag = (simulation) => {
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart()
+        event.subject.fx = event.subject.x
+        event.subject.fy = event.subject.y
+      }
+
+      function dragged(event) {
+        event.subject.fx = event.x
+        event.subject.fy = event.y
+      }
+
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0)
+        event.subject.fx = null
+        event.subject.fy = null
+      }
+
+      return d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended)
+    }
+
+    // 状态文本转换
+    const getStateText = (state) => {
+      const stateTexts = {
+        'unaware': '未知晓',
+        'aware': '已知晓',
+        'adopted': '已采纳'
+      }
+      return stateTexts[state] || '未知'
+    }
+
+    // 更新网络
+    const updateNetwork = () => {
+      if (simulation) {
+        simulation.stop()
+      }
+      initializeNetwork()
+    }
+
+    // 获取节点颜色
+    const getNodeColor = (state) => {
+      const colors = {
+        'unaware': '#cccccc',
+        'aware': '#ffd700',
+        'adopted': '#ff4444'
+      }
+      return colors[state]
+    }
+
+    // 监听网络大小变化
+    watch(networkSize, () => {
+      updateNetwork()
+    })
+
+    // 图表初始化
+    const initializeCharts = () => {
+      initializeGrowthChart()
+      initializeStateChart()
+    }
+
+    // 初始化增长曲线图
+    const initializeGrowthChart = () => {
+      // 清除现有的SVG
+      if (growthChart.value) {
+        d3.select(growthChart.value).selectAll("*").remove()
+      }
+
+      // 创建SVG
+      growthSvg = d3.select(growthChart.value)
+        .append('svg')
+        .attr('width', CHART_WIDTH)
+        .attr('height', CHART_HEIGHT)
+        .append('g')
+        .attr('transform', `translate(${CHART_MARGIN.left},${CHART_MARGIN.top})`)
+
+      // 创建比例尺
+      const xScale = d3.scaleLinear()
+        .range([0, INNER_WIDTH])
       
-      // 随机选择种子节点
-      const seedIndices = []
-      while (seedIndices.length < this.seedCount) {
-        const index = Math.floor(Math.random() * this.nodeCount)
-        if (!seedIndices.includes(index)) {
-          seedIndices.push(index)
+      const yScale = d3.scaleLinear()
+        .range([INNER_HEIGHT, 0])
+
+      // 创建坐标轴
+      growthXAxis = growthSvg.append('g')
+        .attr('class', 'x-axis')
+        .attr('transform', `translate(0,${INNER_HEIGHT})`)
+
+      growthYAxis = growthSvg.append('g')
+        .attr('class', 'y-axis')
+
+      // 创建线条生成器
+      const lineGenerator = d3.line()
+        .x(d => xScale(d.step))
+        .y(d => yScale(d.adopted))
+        .curve(d3.curveMonotoneX)
+
+      // 添加线条路径
+      growthLine = growthSvg.append('path')
+        .attr('class', 'growth-line')
+        .attr('fill', 'none')
+        .attr('stroke', '#409EFF')
+        .attr('stroke-width', 2)
+
+      // 添加标题
+      growthSvg.append('text')
+        .attr('class', 'chart-title')
+        .attr('x', INNER_WIDTH / 2)
+        .attr('y', -5)
+        .attr('text-anchor', 'middle')
+        .text('采纳率增长曲线')
+
+      // 添加坐标轴标签
+      growthSvg.append('text')
+        .attr('class', 'axis-label')
+        .attr('x', INNER_WIDTH / 2)
+        .attr('y', INNER_HEIGHT + 25)
+        .attr('text-anchor', 'middle')
+        .text('步数')
+
+      growthSvg.append('text')
+        .attr('class', 'axis-label')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -INNER_HEIGHT / 2)
+        .attr('y', -30)
+        .attr('text-anchor', 'middle')
+        .text('采纳节点数')
+    }
+
+    // 初始化状态分布图
+    const initializeStateChart = () => {
+      // 清除现有的SVG
+      if (stateChart.value) {
+        d3.select(stateChart.value).selectAll("*").remove()
+      }
+
+      // 创建SVG
+      stateSvg = d3.select(stateChart.value)
+        .append('svg')
+        .attr('width', CHART_WIDTH)
+        .attr('height', CHART_HEIGHT)
+        .append('g')
+        .attr('transform', `translate(${CHART_WIDTH/2},${CHART_HEIGHT/2})`)
+
+      // 设置饼图半径
+      const radius = Math.min(CHART_WIDTH, CHART_HEIGHT) / 2 - 40
+
+      // 创建饼图生成器
+      pieChart = d3.pie()
+        .value(d => d.value)
+        .sort(null)
+
+      // 创建弧形生成器
+      const arc = d3.arc()
+        .innerRadius(radius * 0.6) // 设置为环形图
+        .outerRadius(radius)
+
+      // 添加初始的空弧形
+      stateSvg.selectAll('path')
+        .data(pieChart([
+          { state: 'unaware', value: 1 },
+          { state: 'aware', value: 0 },
+          { state: 'adopted', value: 0 }
+        ]))
+        .enter()
+        .append('path')
+        .attr('class', d => `arc-${d.data.state}`)
+        .attr('fill', d => getNodeColor(d.data.state))
+        .attr('d', arc)
+
+      // 添加标题
+      stateSvg.append('text')
+        .attr('class', 'chart-title')
+        .attr('y', -radius - 10)
+        .attr('text-anchor', 'middle')
+        .text('状态分布')
+
+      // 添加中心文本
+      stateSvg.append('text')
+        .attr('class', 'center-text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', '0.35em')
+    }
+
+    // 更新增长曲线
+    const updateGrowthChart = () => {
+      if (!growthSvg || stateData.value.history.length === 0) return
+
+      const data = stateData.value.history
+
+      // 更新比例尺
+      const xScale = d3.scaleLinear()
+        .domain([0, Math.max(10, d3.max(data, d => d.step))])
+        .range([0, INNER_WIDTH])
+
+      const yScale = d3.scaleLinear()
+        .domain([0, nodes.length])
+        .range([INNER_HEIGHT, 0])
+
+      // 更新坐标轴
+      growthXAxis.call(d3.axisBottom(xScale))
+      growthYAxis.call(d3.axisLeft(yScale))
+
+      // 更新线条
+      const lineGenerator = d3.line()
+        .x(d => xScale(d.step))
+        .y(d => yScale(d.adopted))
+        .curve(d3.curveMonotoneX)
+
+      growthLine
+        .datum(data)
+        .transition()
+        .duration(300)
+        .attr('d', lineGenerator)
+    }
+
+    // 更新状态分布图
+    const updateStateChart = () => {
+      if (!stateSvg) return
+
+      const radius = Math.min(CHART_WIDTH, CHART_HEIGHT) / 2 - 40
+      const arc = d3.arc()
+        .innerRadius(radius * 0.6)
+        .outerRadius(radius)
+
+      const data = [
+        { state: 'unaware', value: stateData.value.unaware },
+        { state: 'aware', value: stateData.value.aware },
+        { state: 'adopted', value: stateData.value.adopted }
+      ]
+
+      // 更新饼图
+      const paths = stateSvg.selectAll('path')
+        .data(pieChart(data))
+
+      paths.transition()
+        .duration(300)
+        .attrTween('d', function(d) {
+          const interpolate = d3.interpolate(this._current || d, d)
+          this._current = interpolate(0)
+          return function(t) {
+            return arc(interpolate(t))
+          }
+        })
+
+      // 更新中心文本
+      const total = nodes.length
+      const adoptedPercentage = ((stateData.value.adopted / total) * 100).toFixed(1)
+      stateSvg.select('.center-text')
+        .text(`${adoptedPercentage}%`)
+    }
+
+    // 扩展updateStateData函数
+    const updateStateData = () => {
+      const counts = nodes.reduce((acc, node) => {
+        acc[node.state]++
+        return acc
+      }, { unaware: 0, aware: 0, adopted: 0 })
+
+      stateData.value = {
+        ...counts,
+        history: [...stateData.value.history, {
+          step: simulationStep.value,
+          ...counts
+        }]
+      }
+
+      // 更新图表
+      updateGrowthChart()
+      updateStateChart()
+    }
+
+    // 监听自动更新开关
+    watch(autoUpdate, (newValue) => {
+      if (newValue && isSimulating.value) {
+        updateStateData()
+      }
+    })
+
+    // 开始模拟
+    const startSimulation = () => {
+      if (isSimulating.value) return
+
+      // 如果是重新开始，先重置
+      if (simulationStep.value === 0) {
+        // 选择初始种子节点
+        const seedNodes = selectSeedNodes()
+        initializeSeeds(seedNodes)
+      }
+
+      isSimulating.value = true
+      simulationInterval.value = setInterval(() => {
+        const hasChanges = simulateOneStep()
+        if (!hasChanges) {
+          pauseSimulation()
+          ElMessage.success('模拟完成！')
         }
+      }, SIMULATION_SPEED)
+    }
+
+    // 暂停模拟
+    const pauseSimulation = () => {
+      if (!isSimulating.value) return
+      
+      isSimulating.value = false
+      if (simulationInterval.value) {
+        clearInterval(simulationInterval.value)
+        simulationInterval.value = null
       }
       
-      // 设置种子节点为已采纳状态
-      seedIndices.forEach(index => {
-        this.nodes[index].state = 'adopted'
-        this.nodes[index].adoptionTime = 0
-        this.nodes[index].awarenessTime = 0
+      // 如果模拟已经开始且有节点采纳，设置为稳定状态
+      if (simulationStep.value > 0 && stateData.value.adopted > 0) {
+        teachingStep.value = 3
+        updateVisualization()
+      }
+    }
+
+    // 重置模拟
+    const resetSimulation = () => {
+      pauseSimulation()
+      simulationStep.value = 0
+      
+      // 重置节点状态
+      nodes.forEach(node => {
+        node.state = 'unaware'
+        node.awarenessTime = null
+        node.adoptionTime = null
+        node.delay = Math.floor(Math.random() * propagationDelay.value) + 1
       })
+
+      // 更新可视化
+      updateVisualization()
       
-      this.updateStatistics()
-      this.updateVisualization()
+      // 重置统计数据
+      stateData.value = {
+        unaware: nodes.length,
+        aware: 0,
+        adopted: 0,
+        history: []
+      }
       
-      this.isRunning = true
-      this.intervalId = setInterval(() => {
-        const hasChange = this.simulateOneStep()
-        if (!hasChange) {
-          this.stopCascade()
-        }
-      }, 500)
-    },
-    
-    simulateOneStep() {
-      this.currentStep++
-      let hasChange = false
+      // 重置教学步骤到初始状态
+      teachingStep.value = 0
       
-      // 处理知晓到行动的延时
-      this.nodes.forEach(node => {
+      // 更新指标
+      updateMetrics()
+      resetTeachingState()
+    }
+
+    // 选择种子节点
+    const selectSeedNodes = () => {
+      const seeds = new Set()
+      while (seeds.size < seedCount.value) {
+        const randomIndex = Math.floor(Math.random() * nodes.length)
+        seeds.add(randomIndex)
+      }
+      return Array.from(seeds)
+    }
+
+    // 初始化种子节点
+    const initializeSeeds = (seedNodes) => {
+      seedNodes.forEach(nodeId => {
+        const node = nodes[nodeId]
+        node.state = 'adopted'
+        node.adoptionTime = 0
+        node.awarenessTime = 0
+      })
+      updateVisualization()
+      updateStateData()
+    }
+
+    // 模拟一步
+    const simulateOneStep = () => {
+      simulationStep.value++
+      let hasChanges = false
+
+      // 第一阶段：检查知晓节点是否达到采纳条件
+      nodes.forEach(node => {
         if (node.state === 'aware' && 
-            node.awarenessTime !== null && 
-            this.currentStep - node.awarenessTime >= node.delay) {
+            simulationStep.value - node.awarenessTime >= node.delay) {
           node.state = 'adopted'
-          node.adoptionTime = this.currentStep
-          hasChange = true
+          node.adoptionTime = simulationStep.value
+          hasChanges = true
         }
       })
-      
-      // 传播给邻居
-      const newlyAware = []
-      this.nodes.forEach(node => {
+
+      // 第二阶段：传播给邻居节点
+      const newlyAwareNodes = new Set()
+      nodes.forEach(node => {
         if (node.state === 'adopted') {
           node.neighbors.forEach(neighborId => {
-            const neighbor = this.nodes[neighborId]
-            if (neighbor.state === 'susceptible') {
-              // 计算已采纳的邻居比例
+            const neighbor = nodes[neighborId]
+            if (neighbor.state === 'unaware') {
               const adoptedNeighbors = neighbor.neighbors.filter(nId => 
-                this.nodes[nId].state === 'adopted'
+                nodes[nId].state === 'adopted'
               ).length
-              
               const adoptionRatio = adoptedNeighbors / neighbor.neighbors.length
               
-              if (adoptionRatio >= this.threshold) {
-                newlyAware.push(neighborId)
+              if (adoptionRatio >= adoptionThreshold.value) {
+                newlyAwareNodes.add(neighborId)
               }
             }
           })
         }
       })
-      
+
       // 更新新知晓的节点
-      newlyAware.forEach(nodeId => {
-        if (this.nodes[nodeId].state === 'susceptible') {
-          this.nodes[nodeId].state = 'aware'
-          this.nodes[nodeId].awarenessTime = this.currentStep
-          hasChange = true
+      newlyAwareNodes.forEach(nodeId => {
+        const node = nodes[nodeId]
+        if (node.state === 'unaware') {
+          node.state = 'aware'
+          node.awarenessTime = simulationStep.value
+          hasChanges = true
         }
       })
-      
-      this.updateStatistics()
-      this.updateVisualization()
-      
-      return hasChange
-    },
-    
-    stopCascade() {
-      this.isRunning = false
-      if (this.intervalId) {
-        clearInterval(this.intervalId)
-        this.intervalId = null
-      }
-    },
-    
-    resetCascade() {
-      this.currentStep = 0
-      this.nodes.forEach(node => {
-        node.state = 'susceptible'
-        node.adoptionTime = null
-        node.awarenessTime = null
-      })
-      this.updateStatistics()
-      this.updateVisualization()
-    },
-    
-    updateStatistics() {
-      this.adoptedCount = this.nodes.filter(node => node.state === 'adopted').length
-      this.adoptionRate = ((this.adoptedCount / this.nodeCount) * 100).toFixed(1)
-      
-      const adoptedNodes = this.nodes.filter(node => node.adoptionTime !== null)
-      if (adoptedNodes.length > 0) {
-        const totalDelay = adoptedNodes.reduce((sum, node) => 
-          sum + (node.adoptionTime - (node.awarenessTime || 0)), 0)
-        this.averageDelay = (totalDelay / adoptedNodes.length).toFixed(2)
+
+      // 更新可视化和统计
+      if (hasChanges) {
+        updateVisualization()
+        updateStateData()
+        updateMetrics()
+        updateTeachingStep()
       } else {
-        this.averageDelay = 0
-      }
-    },
-    
-    renderNetwork() {
-      const container = this.$refs.cascadeContainer
-      d3.select(container).selectAll("*").remove()
-      
-      const width = 600
-      const height = 400
-      
-      const svg = d3.select(container)
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height)
-      
-      this.simulation = d3.forceSimulation(this.nodes)
-        .force("link", d3.forceLink(this.links).id(d => d.id).distance(50))
-        .force("charge", d3.forceManyBody().strength(-100))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-      
-      this.linkSelection = svg.append("g")
-        .selectAll("line")
-        .data(this.links)
-        .enter().append("line")
-        .attr("stroke", "#999")
-        .attr("stroke-opacity", 0.6)
-        .attr("stroke-width", 1)
-      
-      this.nodeSelection = svg.append("g")
-        .selectAll("circle")
-        .data(this.nodes)
-        .enter().append("circle")
-        .attr("r", 6)
-        .attr("fill", this.getNodeColor)
-        .call(d3.drag()
-          .on("start", this.dragstarted)
-          .on("drag", this.dragged)
-          .on("end", this.dragended))
-      
-      this.nodeSelection.append("title")
-        .text(d => `节点 ${d.id}\n状态: ${this.getStateText(d.state)}\n延时: ${d.delay}`)
-      
-      this.simulation.on("tick", () => {
-        this.linkSelection
-          .attr("x1", d => d.source.x)
-          .attr("y1", d => d.source.y)
-          .attr("x2", d => d.target.x)
-          .attr("y2", d => d.target.y)
+        // 没有更多变化，进入稳定状态
+        teachingStep.value = 3
+        updateVisualization()
+        updateStateData()
+        updateMetrics()
         
-        this.nodeSelection
-          .attr("cx", d => d.x)
-          .attr("cy", d => d.y)
-      })
-    },
-    
-    updateVisualization() {
-      if (this.nodeSelection) {
-        this.nodeSelection
-          .attr("fill", this.getNodeColor)
-          .select("title")
-          .text(d => `节点 ${d.id}\n状态: ${this.getStateText(d.state)}\n延时: ${d.delay}`)
+        // 计算最终的模拟结果
+        calculateSimulationResults()
+        
+        // 显示结果对话框
+        showResultDialog.value = true
+        
+        // 停止模拟
+        pauseSimulation()
       }
-    },
-    
-    getNodeColor(d) {
-      switch (d.state) {
-        case 'susceptible': return '#cccccc'
-        case 'aware': return '#ffa500'
-        case 'adopted': return '#ff4444'
-        default: return '#cccccc'
-      }
-    },
-    
-    getStateText(state) {
-      switch (state) {
-        case 'susceptible': return '易感'
-        case 'aware': return '知晓'
-        case 'adopted': return '采纳'
-        default: return '未知'
-      }
-    },
-    
-    dragstarted(event, d) {
-      if (!event.active) this.simulation.alphaTarget(0.3).restart()
-      d.fx = d.x
-      d.fy = d.y
-    },
-    
-    dragged(event, d) {
-      d.fx = event.x
-      d.fy = event.y
-    },
-    
-    dragended(event, d) {
-      if (!event.active) this.simulation.alphaTarget(0)
-      d.fx = null
-      d.fy = null
+
+      return hasChanges
     }
-  },
-  
-  beforeUnmount() {
-    this.stopCascade()
+
+    // 更新可视化
+    const updateVisualization = () => {
+      if (!nodeElements || !linkElements) return
+
+      // 更新节点样式
+      nodeElements
+        .transition()
+        .duration(300)
+        .attr('fill', d => {
+          if (visualMode.value === 'community') {
+            const communityInfo = communityData.value.find(c => c.nodeId === d.id)
+            if (communityInfo) {
+              return d3.schemeSet3[(communityInfo.community - 1) % 12]
+            }
+            return '#ccc'
+          } else {
+            return getNodeColor(d.state)
+          }
+        })
+        .attr('r', d => {
+          const baseRadius = visualMode.value === 'community' 
+            ? NODE_RADIUS + (d.neighbors.length / 2)
+            : NODE_RADIUS
+          return d.state === 'adopted' ? baseRadius * 1.2 : baseRadius
+        })
+        .attr('stroke', d => {
+          if (visualMode.value === 'community') {
+            switch(d.state) {
+              case 'adopted':
+                return '#ff4444'
+              case 'aware':
+                return '#ffd700'
+              default:
+                return '#fff'
+            }
+          }
+          return highlightedNodes.value.has(d.id) ? '#000' : 'none'
+        })
+        .attr('stroke-width', d => {
+          if (visualMode.value === 'community') {
+            return d.state === 'unaware' ? 1 : 2
+          }
+          return highlightedNodes.value.has(d.id) ? 2 : 0
+        })
+
+      // 更新连接样式
+      linkElements
+        .transition()
+        .duration(300)
+        .attr('stroke', d => {
+          if (visualMode.value === 'community') {
+            const sourceCommunity = communityData.value.find(c => c.nodeId === d.source.id)?.community
+            const targetCommunity = communityData.value.find(c => c.nodeId === d.target.id)?.community
+            if (sourceCommunity === targetCommunity) {
+              return d3.schemeSet3[(sourceCommunity - 1) % 12]
+            }
+            return '#ddd'
+          }
+          return '#999'
+        })
+        .attr('stroke-width', 1)
+        .attr('stroke-opacity', 0.6)
+
+      // 更新图例
+      const legendContainer = d3.select('.legend')
+      legendContainer.selectAll('*').remove()
+
+      if (visualMode.value === 'community') {
+        // 获取所有社区编号并排序
+        const uniqueCommunities = [...new Set(communityData.value.map(d => d.community))].sort((a, b) => a - b)
+        
+        const legendWrapper = legendContainer.append('div')
+          .attr('class', 'legend-wrapper')
+          .style('display', 'flex')
+          .style('gap', '20px')
+          .style('justify-content', 'center')
+          .style('align-items', 'center')
+          .style('background-color', 'white')
+          .style('padding', '8px 16px')
+          .style('border-radius', '4px')
+          .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+
+        uniqueCommunities.forEach(community => {
+          const legendItem = legendWrapper.append('div')
+            .attr('class', 'legend-item')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('gap', '8px')
+
+          // 创建一个SVG来显示节点示意图
+          const nodeSvg = legendItem.append('svg')
+            .attr('width', '40')
+            .attr('height', '30')
+            .style('overflow', 'visible')
+
+          // 添加连接示意
+          nodeSvg.append('line')
+            .attr('x1', '5')
+            .attr('y1', '15')
+            .attr('x2', '35')
+            .attr('y2', '15')
+            .attr('stroke', d3.schemeSet3[(community - 1) % 12])
+            .attr('stroke-width', '2')
+            .attr('stroke-opacity', '0.6')
+
+          // 添加两个节点示意
+          nodeSvg.append('circle')
+            .attr('cx', '10')
+            .attr('cy', '15')
+            .attr('r', '6')
+            .attr('fill', d3.schemeSet3[(community - 1) % 12])
+            .style('stroke', 'white')
+            .style('stroke-width', '2')
+
+          nodeSvg.append('circle')
+            .attr('cx', '30')
+            .attr('cy', '15')
+            .attr('r', '6')
+            .attr('fill', d3.schemeSet3[(community - 1) % 12])
+            .style('stroke', 'white')
+            .style('stroke-width', '2')
+
+          // 添加社区文字
+          legendItem.append('span')
+            .style('font-size', '14px')
+            .style('color', '#333')
+            .text(`社区 ${community}`)
+
+          // 添加分隔符（除了最后一项）
+          if (community !== uniqueCommunities[uniqueCommunities.length - 1]) {
+            legendWrapper.append('div')
+              .style('width', '1px')
+              .style('height', '30px')
+              .style('background-color', '#ddd')
+          }
+        })
+
+        // 添加状态说明
+        const stateIndicator = legendContainer.append('div')
+          .attr('class', 'state-indicator')
+          .style('margin-top', '10px')
+          .style('display', 'flex')
+          .style('justify-content', 'center')
+          .style('gap', '20px')
+          .style('background-color', 'white')
+          .style('padding', '8px 16px')
+          .style('border-radius', '4px')
+          .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+
+        // 添加状态示例
+        const states = [
+          { label: '未知晓', opacity: 0.5 },
+          { label: '已知晓', opacity: 0.8 },
+          { label: '已采纳', opacity: 1 }
+        ]
+
+        states.forEach(({ label, opacity }) => {
+          const stateItem = stateIndicator.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('gap', '8px')
+
+          const stateSvg = stateItem.append('svg')
+            .attr('width', '20')
+            .attr('height', '20')
+
+          stateSvg.append('circle')
+            .attr('cx', '10')
+            .attr('cy', '10')
+            .attr('r', '6')
+            .attr('fill', '#666')
+            .style('opacity', opacity)
+            .style('stroke', 'white')
+            .style('stroke-width', '2')
+
+          stateItem.append('span')
+            .style('font-size', '12px')
+            .style('color', '#666')
+            .text(label)
+        })
+      } else {
+        // 在网络视图模式下显示状态图例
+        const states = [
+          { state: 'unaware', label: '未知晓', color: '#cccccc' },
+          { state: 'aware', label: '已知晓', color: '#ffd700' },
+          { state: 'adopted', label: '已采纳', color: '#ff4444' }
+        ]
+
+        const legendWrapper = legendContainer.append('div')
+          .attr('class', 'legend-wrapper')
+          .style('display', 'flex')
+          .style('gap', '20px')
+          .style('justify-content', 'center')
+          .style('align-items', 'center')
+          .style('background-color', 'white')
+          .style('padding', '8px 16px')
+          .style('border-radius', '4px')
+          .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+
+        states.forEach(({ state, label, color }) => {
+          const legendItem = legendWrapper.append('div')
+            .attr('class', 'legend-item')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('gap', '8px')
+
+          // 添加颜色示意圆点
+          legendItem.append('div')
+            .attr('class', 'legend-color')
+            .style('width', '16px')
+            .style('height', '16px')
+            .style('border-radius', '50%')
+            .style('background-color', color)
+            .style('border', '2px solid white')
+            .style('box-shadow', '0 0 2px rgba(0,0,0,0.2)')
+
+          // 添加状态文字
+          legendItem.append('span')
+            .style('font-size', '14px')
+            .style('color', '#333')
+            .text(label)
+
+          // 添加分隔符（除了最后一项）
+          if (state !== 'adopted') {
+            legendWrapper.append('div')
+              .style('width', '1px')
+              .style('height', '20px')
+              .style('background-color', '#ddd')
+          }
+        })
+      }
+    }
+
+    // 更新关键指标
+    const updateMetrics = () => {
+      // 计算传播速度（每步平均新增采纳节点数）
+      const adoptedCount = stateData.value.adopted
+      propagationSpeed.value = simulationStep.value > 0 
+        ? (adoptedCount / simulationStep.value).toFixed(2)
+        : 0
+
+      // 计算采纳率
+      adoptionRate.value = ((adoptedCount / nodes.length) * 100).toFixed(1)
+
+      // 预估完成步数
+      if (adoptedCount > 0 && adoptedCount < nodes.length) {
+        const rate = adoptedCount / simulationStep.value
+        estimatedCompletion.value = Math.ceil((nodes.length - adoptedCount) / rate)
+      } else {
+        estimatedCompletion.value = 0
+      }
+    }
+
+    // 更新教学步骤
+    const updateTeachingStep = () => {
+      // 如果模拟已经结束，保持在稳定状态
+      if (!isSimulating.value && simulationStep.value > 0 && stateData.value.adopted > 0) {
+        teachingStep.value = 3
+        return
+      }
+
+      const { unaware, aware, adopted } = stateData.value
+      const total = nodes.length
+      const awareRatio = (aware + adopted) / total
+      const adoptedRatio = adopted / total
+
+      if (simulationStep.value === 0 || unaware === total) {
+        teachingStep.value = 0 // 初始状态
+      } else if (awareRatio > 0 && adoptedRatio < 0.1) {
+        teachingStep.value = 1 // 知晓阶段
+      } else if (adoptedRatio >= 0.1 && adoptedRatio < 0.8) {
+        teachingStep.value = 2 // 采纳过程
+      } else {
+        teachingStep.value = 3 // 稳定状态
+      }
+    }
+
+    // 监听参数变化
+    watch([adoptionThreshold, propagationDelay], () => {
+      if (!isSimulating.value) {
+        resetSimulation()
+      }
+    })
+
+    // 教学功能函数
+    const highlightInfluencers = () => {
+      if (teachingMode.value === 'influencers') {
+        // 取消高亮
+        teachingMode.value = ''
+        highlightedNodes.value.clear()
+      } else {
+        teachingMode.value = 'influencers'
+        // 计算节点影响力
+        const influencers = calculateInfluencers()
+        highlightedNodes.value = new Set(influencers)
+      }
+      updateVisualization()
+    }
+
+    // 计算影响力节点
+    const calculateInfluencers = () => {
+      // 计算每个节点的影响力指标
+      const influence = nodes.map((node, index) => {
+        const metrics = {
+          degree: node.neighbors.length,
+          adoptedNeighbors: node.neighbors.filter(n => nodes[n].state === 'adopted').length,
+          awarenessTime: node.awarenessTime || Infinity,
+          adoptionTime: node.adoptionTime || Infinity
+        }
+        
+        // 综合评分
+        const score = (metrics.degree * 0.3) + 
+                     (metrics.adoptedNeighbors * 0.4) + 
+                     (metrics.awarenessTime === Infinity ? 0 : (1 / metrics.awarenessTime) * 0.3)
+        
+        return { index, score }
+      })
+
+      // 返回前20%的高影响力节点
+      return influence
+        .sort((a, b) => b.score - a.score)
+        .slice(0, Math.max(1, Math.floor(nodes.length * 0.2)))
+        .map(n => n.index)
+    }
+
+    // 切换社区视图
+    const toggleCommunityView = () => {
+      if (visualMode.value === 'community') {
+        // 如果已经在社区视图，切换回网络视图
+        visualMode.value = 'network'
+        teachingMode.value = ''
+      } else {
+        // 切换到社区视图
+        visualMode.value = 'community'
+        teachingMode.value = 'community'
+        if (communityData.value.length === 0) {
+          detectCommunities()
+        }
+      }
+      // 添加提示信息
+      ElMessage({
+        message: visualMode.value === 'network' 
+          ? '已切换到网络视图，展示节点的传播状态' 
+          : '已切换到社区视图，展示网络的社区结构',
+        type: 'info'
+      })
+      updateVisualization()
+    }
+
+    // 社区检测
+    const detectCommunities = () => {
+      // 使用改进的社区检测算法
+      const communities = new Map()
+      const nodeDegrees = new Map()
+      const modularity = new Map()
+      
+      // 计算节点度数和初始化社区
+      nodes.forEach((node, i) => {
+        nodeDegrees.set(i, node.neighbors.length)
+        communities.set(i, i) // 初始时每个节点是独立社区
+        modularity.set(i, 0)
+      })
+
+      // 计算总边数
+      const totalEdges = links.length * 2 // 无向图中每个边计算两次
+
+      // 计算节点的社区得分
+      const calculateModularity = (nodeId, communityId) => {
+        let score = 0
+        const nodeNeighbors = nodes[nodeId].neighbors
+        
+        // 计算节点与社区内其他节点的连接强度
+        nodeNeighbors.forEach(neighborId => {
+          if (communities.get(neighborId) === communityId) {
+            score += 1
+          }
+        })
+
+        // 考虑节点度数的影响
+        const penalty = (nodeDegrees.get(nodeId) * nodeDegrees.get(communityId)) / totalEdges
+        return score - penalty
+      }
+
+      // 迭代优化社区结构
+      const maxIterations = 5
+      for (let iter = 0; iter < maxIterations; iter++) {
+        let changed = false
+        
+        // 随机打乱节点顺序
+        const shuffledNodes = [...nodes.keys()].sort(() => Math.random() - 0.5)
+        
+        for (const i of shuffledNodes) {
+          const currentCommunity = communities.get(i)
+          let bestCommunity = currentCommunity
+          let bestModularity = calculateModularity(i, currentCommunity)
+          
+          // 检查邻居所在的社区
+          const neighborCommunities = new Set()
+          nodes[i].neighbors.forEach(neighborId => {
+            neighborCommunities.add(communities.get(neighborId))
+          })
+          
+          // 评估每个候选社区
+          neighborCommunities.forEach(candidateCommunity => {
+            const modularityGain = calculateModularity(i, candidateCommunity)
+            if (modularityGain > bestModularity) {
+              bestModularity = modularityGain
+              bestCommunity = candidateCommunity
+            }
+          })
+          
+          // 如果找到更好的社区，则更新
+          if (bestCommunity !== currentCommunity) {
+            communities.set(i, bestCommunity)
+            changed = true
+          }
+        }
+        
+        // 如果没有节点改变社区，则提前结束
+        if (!changed) break
+      }
+
+      // 重新编号社区，确保编号连续
+      const uniqueCommunities = [...new Set(communities.values())]
+      const validCommunities = new Set()
+      const communitySizes = new Map()
+      
+      // 计算每个社区的大小
+      communities.forEach((communityId) => {
+        communitySizes.set(communityId, (communitySizes.get(communityId) || 0) + 1)
+      })
+
+      // 按社区大小排序，确保大社区获得较小的编号
+      const sortedCommunities = [...communitySizes.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([id]) => id)
+
+      // 创建新的编号映射（从1开始）
+      const communityMap = new Map()
+      let newId = 1
+      sortedCommunities.forEach(oldId => {
+        const size = communitySizes.get(oldId)
+        if (size >= Math.max(3, Math.floor(nodes.length * 0.05))) {
+          communityMap.set(oldId, newId++)
+          validCommunities.add(oldId)
+        }
+      })
+
+      // 处理小社区的节点
+      communities.forEach((oldCommunityId, nodeId) => {
+        if (!validCommunities.has(oldCommunityId)) {
+          // 将节点分配到最相连的有效社区
+          let bestCommunity = null
+          let maxConnections = -1
+          
+          nodes[nodeId].neighbors.forEach(neighborId => {
+            const neighborCommunityId = communities.get(neighborId)
+            if (validCommunities.has(neighborCommunityId)) {
+              const connections = nodes[nodeId].neighbors.filter(n => 
+                communities.get(n) === neighborCommunityId
+              ).length
+              if (connections > maxConnections) {
+                maxConnections = connections
+                bestCommunity = neighborCommunityId
+              }
+            }
+          })
+          
+          if (bestCommunity !== null) {
+            communities.set(nodeId, bestCommunity)
+          } else {
+            // 如果没有连接到任何有效社区，分配到最大的社区
+            communities.set(nodeId, sortedCommunities[0])
+          }
+        }
+      })
+
+      // 更新社区数据
+      communityData.value = Array.from(communities.entries()).map(([nodeId, oldCommunityId]) => ({
+        nodeId,
+        community: communityMap.get(oldCommunityId)
+      }))
+    }
+
+    // 重置教学状态
+    const resetTeachingState = () => {
+      teachingMode.value = ''
+      visualMode.value = 'network' // 重置时切换回网络视图
+      highlightedNodes.value.clear()
+      communityData.value = []
+      updateVisualization()
+    }
+
+    // 视图切换处理
+    const handleViewChange = (newMode) => {
+      visualMode.value = newMode
+      if (newMode === 'community') {
+        // 切换到社区视图时，同步更新教学模式
+        teachingMode.value = 'community'
+        if (communityData.value.length === 0) {
+          detectCommunities()
+        }
+      } else {
+        // 切换回网络视图时，清除教学模式
+        teachingMode.value = ''
+      }
+      updateVisualization()
+    }
+
+    // 监听视图模式变化
+    watch(visualMode, handleViewChange)
+
+    // 添加计算模拟结果的方法
+    const calculateSimulationResults = () => {
+      const { history, adopted } = stateData.value
+      const total = nodes.length
+
+      // 计算采纳率变化
+      const adoptionRates = history.map(h => h.adopted / total)
+      
+      // 找出增长最快的时期
+      const rateChanges = adoptionRates.map((rate, i) => 
+        i > 0 ? rate - adoptionRates[i-1] : rate
+      )
+      const peakChangeIndex = rateChanges.indexOf(Math.max(...rateChanges))
+
+      // 计算社区统计
+      const communityStats = []
+      if (communityData.value.length > 0) {
+        const communitySizes = new Map()
+        const communityAdopted = new Map()
+        
+        communityData.value.forEach(({ nodeId, community }) => {
+          communitySizes.set(community, (communitySizes.get(community) || 0) + 1)
+          if (nodes[nodeId].state === 'adopted') {
+            communityAdopted.set(community, (communityAdopted.get(community) || 0) + 1)
+          }
+        })
+        
+        communitySizes.forEach((size, community) => {
+          communityStats.push({
+            id: community,
+            size,
+            adopted: communityAdopted.get(community) || 0,
+            adoptionRate: ((communityAdopted.get(community) || 0) / size * 100).toFixed(1)
+          })
+        })
+      }
+
+      // 计算节点影响力
+      const nodeInfluence = nodes.map((node, index) => {
+        // 如果节点未采纳，不计算影响力
+        if (!node.adoptionTime) return null
+
+        // 直接影响：计算在此节点采纳后知晓或采纳的邻居数量
+        const directInfluence = node.neighbors.filter(nId => {
+          const neighbor = nodes[nId]
+          // 邻居在此节点采纳后知晓或采纳
+          return (neighbor.awarenessTime && neighbor.awarenessTime > node.adoptionTime) ||
+                 (neighbor.adoptionTime && neighbor.adoptionTime > node.adoptionTime)
+        })
+
+        // 计算影响力得分
+        const influenceScore = directInfluence.reduce((score, nId) => {
+          const neighbor = nodes[nId]
+          // 根据影响类型给予不同权重
+          if (neighbor.adoptionTime && neighbor.adoptionTime > node.adoptionTime) {
+            // 如果邻居最终采纳，给予更高权重
+            const timeGap = neighbor.adoptionTime - node.adoptionTime
+            // 时间间隔越短，影响力越大
+            score += 1 + 1 / (1 + timeGap * 0.1)
+          } else if (neighbor.awarenessTime && neighbor.awarenessTime > node.adoptionTime) {
+            // 如果邻居只是知晓，给予基础权重
+            score += 0.5
+          }
+          return score
+        }, 0)
+
+        return {
+          id: index,
+          adoptionTime: node.adoptionTime,
+          neighbors: node.neighbors.length,
+          influenced: directInfluence.length,
+          influenceScore: influenceScore,
+          // 计算影响效率（影响邻居比例）
+          efficiency: directInfluence.length / node.neighbors.length,
+          // 统计影响的具体结果
+          influenceDetails: {
+            adopted: directInfluence.filter(nId => nodes[nId].adoptionTime > node.adoptionTime).length,
+            aware: directInfluence.filter(nId => 
+              nodes[nId].awarenessTime > node.adoptionTime && 
+              (!nodes[nId].adoptionTime || nodes[nId].adoptionTime > node.adoptionTime)
+            ).length
+          }
+        }
+      }).filter(Boolean) // 移除未采纳节点的null值
+
+      // 根据综合得分排序
+      const influentialNodes = nodeInfluence
+        .sort((a, b) => b.influenceScore - a.influenceScore)
+        .slice(0, 5)
+        .map(node => ({
+          ...node,
+          // 添加影响详情的文字描述
+          influenceText: `影响了${node.influenced}个邻居 (采纳${node.influenceDetails.adopted}个, 知晓${node.influenceDetails.aware}个)`
+        }))
+
+      // 更新结果
+      simulationResults.value = {
+        totalSteps: simulationStep.value,
+        adoptionRate: (adopted / total * 100).toFixed(1),
+        averageSpeed: (adopted / simulationStep.value).toFixed(2),
+        peakStep: peakChangeIndex,
+        peakRate: (rateChanges[peakChangeIndex] * 100).toFixed(1),
+        communityStats,
+        influentialNodes
+      }
+    }
+
+    return {
+      // 状态
+      networkSize,
+      adoptionThreshold,
+      propagationDelay,
+      seedCount,
+      visualMode,
+      autoUpdate,
+      teachingStep,
+      propagationSpeed,
+      adoptionRate,
+      estimatedCompletion,
+      
+      // DOM引用
+      networkContainer,
+      growthChart,
+      stateChart,
+
+      // 方法
+      startSimulation,
+      pauseSimulation,
+      resetSimulation,
+      highlightInfluencers,
+      toggleCommunityView,
+      updateNetwork,
+      getNodeColor,
+      getStateText,
+      isSimulating,
+      simulationStep,
+      stateData,
+      teachingMode,
+      communityData,
+      handleViewChange,
+
+      // 对话框相关的状态
+      showResultDialog,
+      simulationResults
+    }
   }
 }
 </script>
 
 <style scoped>
-.network-cascade {
+.network-cascade-container {
   padding: 20px;
+  height: 100vh;
+  background-color: #f5f7fa;
 }
 
-.cascade-container {
-  width: 100%;
-  height: 400px;
-  border: 1px solid #ddd;
+.control-panel {
+  margin-bottom: 20px;
+}
+
+.main-content {
+  height: calc(100vh - 200px);
+}
+
+.visualization-card {
+  height: 100%;
+}
+
+.network-container {
+  height: calc(100% - 100px);
+  background-color: white;
   border-radius: 4px;
 }
 
-.el-card {
+.stats-card, .teaching-card {
   margin-bottom: 20px;
+}
+
+.chart-container {
+  background: white;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  gap: 10px;
+}
+
+.legend-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 16px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.state-indicator {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 8px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+.key-metrics {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 100px;
+}
+
+.metric-item {
+  text-align: center;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.metric-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #409EFF;
+  line-height: 1;
+  margin: auto 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  height: 40px;
+}
+
+.metric-value .number {
+  line-height: 1;
+  display: inline-block;
+}
+
+.metric-value .unit {
+  font-size: 20px;
+  margin-left: 2px;
+  line-height: 1;
+}
+
+.teaching-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 15px;
+}
+
+.teaching-tools .el-button-group {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.teaching-tools .el-button {
+  flex: 1;
+  max-width: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.teaching-progress {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.node-transition {
+  transition: all 0.3s ease;
+}
+
+.link-transition {
+  transition: all 0.3s ease;
+}
+
+.growth-line {
+  fill: none;
+  stroke-width: 2;
+}
+
+.x-axis, .y-axis {
+  font-size: 12px;
+}
+
+.chart-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.axis-label {
+  font-size: 12px;
+  fill: #666;
+}
+
+.center-text {
+  font-size: 24px;
+  font-weight: bold;
+  fill: #409EFF;
+}
+
+.arc-unaware { fill: #cccccc; }
+.arc-aware { fill: #ffd700; }
+.arc-adopted { fill: #ff4444; }
+
+.node-label {
+  font-size: 12px;
+  pointer-events: none;
+  fill: #333;
+}
+
+.teaching-tools .el-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.teaching-tools .el-button.active {
+  background-color: #409EFF;
+  color: white;
+}
+
+.teaching-tools .el-button:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s;
+}
+
+.el-steps {
+  margin-top: 15px;
+}
+
+.view-icon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.el-radio-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.el-tooltip__content {
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+.el-tooltip__content p {
+  margin: 8px 0;
+}
+
+.el-tooltip__content b {
+  color: #409EFF;
+}
+
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.help-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.community-help {
+  padding: 8px;
+  max-width: 400px;
+}
+
+.community-help h4 {
+  margin: 12px 0 8px;
+  color: #409EFF;
+  font-size: 14px;
+}
+
+.community-help p {
+  margin: 8px 0;
+  line-height: 1.5;
+  color: #fff;
+}
+
+.community-help ul {
+  margin: 8px 0;
+  padding-left: 16px;
+  color: #fff;
+}
+
+.community-help li {
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.community-help b {
+  color: #ffd700;
+}
+
+.cascade-help {
+  padding: 12px;
+  max-width: 400px;
+}
+
+.cascade-help h4 {
+  margin: 12px 0 8px;
+  color: #409EFF;
+  font-size: 14px;
+}
+
+.cascade-help p {
+  margin: 8px 0;
+  line-height: 1.5;
+  color: #fff;
+}
+
+.cascade-help ul {
+  margin: 8px 0;
+  padding-left: 16px;
+  color: #fff;
+}
+
+.cascade-help li {
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.cascade-help b {
+  color: #ffd700;
+}
+
+.teaching-progress {
+  margin-top: 20px;
+}
+
+.step-tooltip {
+  padding: 8px;
+  max-width: 200px;
+}
+
+.step-tooltip p {
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.current-step {
+  color: #409EFF;
+  font-weight: bold;
+}
+
+.simulation-results {
+  padding: 20px;
+}
+
+.result-section {
+  margin-bottom: 24px;
+}
+
+.result-section h4 {
+  margin: 0 0 16px;
+  color: #409EFF;
+  font-size: 16px;
+}
+
+.result-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.result-section li {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
 }
 </style>
