@@ -1,5 +1,281 @@
 <template>
   <div class="network-cascade-container">
+    <!-- 理论说明卡片 -->
+    <el-card class="theory-card">
+      <template #header>
+        <div class="theory-header">
+          <h1>
+            <i class="el-icon-connection"></i> 网络级联 (Network Cascade)
+          </h1>
+        </div>
+      </template>
+
+      <el-collapse v-model="activeTheorySection" class="theory-collapse">
+        <el-collapse-item name="concept" title="📚 基础概念与机制">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <div class="theory-content">
+                <h3>📚 什么是网络级联？</h3>
+                <p class="theory-text">
+                  网络级联是指<strong>个体的行为选择受到邻居节点的影响，并可能引发连锁反应的现象</strong>。
+                  这种现象在社交网络、信息传播、创新采纳等领域普遍存在。
+                </p>
+
+                <h3>🔍 级联的核心机制</h3>
+                <ul class="theory-list">
+                  <li>
+                    <strong>阈值效应</strong>：个体只有当周围足够比例的邻居采纳后才会跟随采纳
+                  </li>
+                  <li>
+                    <strong>传播延迟</strong>：从知晓到采纳之间存在时间延迟
+                  </li>
+                  <li>
+                    <strong>局部影响</strong>：个体主要受到直接相连节点的影响
+                  </li>
+                </ul>
+              </div>
+            </el-col>
+
+            <el-col :span="12">
+              <div class="cascade-illustration">
+                <h3>🎯 级联特征</h3>
+                <div class="cascade-boxes">
+                  <div class="cascade-box process">
+                    <h4>传播过程</h4>
+                    <p>1. 初始种子节点采纳</p>
+                    <p>2. 邻居节点知晓</p>
+                    <p>3. 达到阈值后采纳</p>
+                    <p>4. 形成连锁反应</p>
+                  </div>
+                  <div class="arrow">⇕</div>
+                  <div class="cascade-box impact">
+                    <h4>影响因素</h4>
+                    <p>网络结构特征</p>
+                    <p>个体采纳阈值</p>
+                    <p>初始种子分布</p>
+                  </div>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+        </el-collapse-item>
+        
+        <el-collapse-item name="networks" title="🌐 网络类型与社区结构">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <div class="network-type-card random">
+                <h3>🎲 随机网络</h3>
+                <p class="algorithm-name">Erdős–Rényi 模型</p>
+                <div class="network-features">
+                  <h4>📊 特征</h4>
+                  <ul>
+                    <li>度分布：<strong>泊松分布</strong></li>
+                    <li>聚类系数：<strong>较低</strong></li>
+                    <li>路径长度：<strong>较短</strong></li>
+                  </ul>
+                  
+                  <h4>🌍 级联表现</h4>
+                  <ul>
+                    <li>传播速度快</li>
+                    <li>覆盖范围大</li>
+                    <li>阈值影响显著</li>
+                  </ul>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :span="8">
+              <div class="network-type-card small-world">
+                <h3>🌍 小世界网络</h3>
+                <p class="algorithm-name">Watts-Strogatz 模型</p>
+                <div class="network-features">
+                  <h4>📊 特征</h4>
+                  <ul>
+                    <li>聚类系数：<strong>较高</strong></li>
+                    <li>路径长度：<strong>较短</strong></li>
+                    <li>社区结构：<strong>明显</strong></li>
+                  </ul>
+                  
+                  <h4>🌍 级联表现</h4>
+                  <ul>
+                    <li>局部快速传播</li>
+                    <li>跨社区阻力大</li>
+                    <li>社区同步现象</li>
+                  </ul>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :span="8">
+              <div class="network-type-card scale-free">
+                <h3>📈 无标度网络</h3>
+                <p class="algorithm-name">Barabási–Albert 模型</p>
+                <div class="network-features">
+                  <h4>📊 特征</h4>
+                  <ul>
+                    <li>度分布：<strong>幂律分布</strong></li>
+                    <li>枢纽节点：<strong>影响力大</strong></li>
+                    <li>社区层次：<strong>多级结构</strong></li>
+                  </ul>
+                  
+                  <h4>🌍 级联表现</h4>
+                  <ul>
+                    <li>枢纽主导传播</li>
+                    <li>级联效应强</li>
+                    <li>阈值敏感性高</li>
+                  </ul>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+        </el-collapse-item>
+
+        <el-collapse-item name="scenarios" title="🎯 典型级联情境">
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <div class="scenario-card positive">
+                <h3>🌟 正向级联</h3>
+                <div class="scenario-content">
+                  <h4>特征表现</h4>
+                  <ul>
+                    <li>采纳行为带来<strong>正面收益</strong></li>
+                    <li>网络<strong>正外部性</strong>明显</li>
+                    <li>采纳意愿随邻居数增加</li>
+                  </ul>
+                  <h4>典型案例</h4>
+                  <ul>
+                    <li>社交媒体平台普及</li>
+                    <li>新技术标准采用</li>
+                    <li>创新产品扩散</li>
+                  </ul>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :span="8">
+              <div class="scenario-card negative">
+                <h3>⚠️ 负向级联</h3>
+                <div class="scenario-content">
+                  <h4>特征表现</h4>
+                  <ul>
+                    <li>采纳行为带来<strong>负面影响</strong></li>
+                    <li>网络<strong>负外部性</strong>显著</li>
+                    <li>防御性决策倾向</li>
+                  </ul>
+                  <h4>典型案例</h4>
+                  <ul>
+                    <li>金融市场恐慌</li>
+                    <li>谣言传播扩散</li>
+                    <li>群体性踩踏</li>
+                  </ul>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :span="8">
+              <div class="scenario-card complex">
+                <h3>🔄 复杂级联</h3>
+                <div class="scenario-content">
+                  <h4>特征表现</h4>
+                  <ul>
+                    <li><strong>多重阈值</strong>共存</li>
+                    <li><strong>竞争性</strong>传播过程</li>
+                    <li>局部与全局效应交织</li>
+                  </ul>
+                  <h4>典型案例</h4>
+                  <ul>
+                    <li>意见极化演化</li>
+                    <li>创新与保守并存</li>
+                    <li>多产品市场竞争</li>
+                  </ul>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+        </el-collapse-item>
+
+        <el-collapse-item name="applications" title="💡 现实应用案例">
+          <el-row :gutter="20">
+            <el-col :span="6">
+              <div class="application-card">
+                <div class="app-icon">🛍️</div>
+                <h3>营销传播</h3>
+                <div class="app-content">
+                  <h4>应用场景</h4>
+                  <ul>
+                    <li>病毒式营销</li>
+                    <li>意见领袖影响</li>
+                    <li>口碑传播效应</li>
+                  </ul>
+                  <div class="app-insight">
+                    <strong>关键策略：</strong>
+                    识别关键节点，设计传播激励
+                  </div>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :span="6">
+              <div class="application-card">
+                <div class="app-icon">📱</div>
+                <h3>产品创新</h3>
+                <div class="app-content">
+                  <h4>应用场景</h4>
+                  <ul>
+                    <li>新产品推广</li>
+                    <li>技术标准采纳</li>
+                    <li>平台生态构建</li>
+                  </ul>
+                  <div class="app-insight">
+                    <strong>关键策略：</strong>
+                    降低采纳门槛，提供网络价值
+                  </div>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :span="6">
+              <div class="application-card">
+                <div class="app-icon">🏛️</div>
+                <h3>公共政策</h3>
+                <div class="app-content">
+                  <h4>应用场景</h4>
+                  <ul>
+                    <li>政策推广实施</li>
+                    <li>公共意见形成</li>
+                    <li>社会规范演化</li>
+                  </ul>
+                  <div class="app-insight">
+                    <strong>关键策略：</strong>
+                    示范引导，渐进推进
+                  </div>
+                </div>
+              </div>
+            </el-col>
+            
+            <el-col :span="6">
+              <div class="application-card">
+                <div class="app-icon">🌍</div>
+                <h3>社会创新</h3>
+                <div class="app-content">
+                  <h4>应用场景</h4>
+                  <ul>
+                    <li>可持续行为推广</li>
+                    <li>公益项目传播</li>
+                    <li>社区治理创新</li>
+                  </ul>
+                  <div class="app-insight">
+                    <strong>关键策略：</strong>
+                    社群营造，价值共创
+                  </div>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+        </el-collapse-item>
+      </el-collapse>
+    </el-card>
+
     <!-- 顶部控制面板 -->
     <el-row class="control-panel" :gutter="20">
       <el-col :span="24">
@@ -8,51 +284,6 @@
             <div class="card-header">
               <div class="header-left">
                 <h3>网络级联控制面板</h3>
-                <el-tooltip
-                  effect="dark"
-                  placement="bottom"
-                  max-width="400"
-                >
-                  <template #content>
-                    <div class="cascade-help">
-                      <h4>什么是级联行为？</h4>
-                      <p>级联行为是指在网络中，个体的行为选择会受到邻居节点的影响，并可能引发连锁反应的现象。这种行为在社交网络、信息传播、创新采纳等领域普遍存在。</p>
-                      
-                      <h4>级联过程的特点：</h4>
-                      <ul>
-                        <li><b>阈值效应</b>：个体只有当周围足够比例的邻居采纳后才会跟随采纳</li>
-                        <li><b>传播延迟</b>：从知晓到采纳之间存在时间延迟</li>
-                        <li><b>局部影响</b>：个体主要受到直接相连节点的影响</li>
-                        <li><b>群体效应</b>：可能出现局部群体的集体采纳现象</li>
-                      </ul>
-
-                      <h4>关键要素：</h4>
-                      <ul>
-                        <li><b>采纳阈值</b>：触发采纳所需的最小邻居采纳比例</li>
-                        <li><b>网络结构</b>：节点间的连接方式影响传播路径</li>
-                        <li><b>初始种子</b>：最早采纳的节点，影响整体传播效果</li>
-                        <li><b>社区结构</b>：密集连接的群组影响传播速度和范围</li>
-                      </ul>
-
-                      <h4>应用场景：</h4>
-                      <ul>
-                        <li>新产品市场推广</li>
-                        <li>社交媒体信息传播</li>
-                        <li>创新技术采纳</li>
-                        <li>社会行为传染</li>
-                      </ul>
-                    </div>
-                  </template>
-                  <el-button
-                    type="info"
-                    plain
-                    size="small"
-                    class="help-button"
-                  >
-                    <el-icon><QuestionFilled /></el-icon>
-                    什么是级联行为？
-                  </el-button>
-                </el-tooltip>
               </div>
               <div class="control-buttons">
                 <el-button type="primary" @click="startSimulation">开始模拟</el-button>
@@ -96,62 +327,16 @@
             <div class="card-header">
               <h3>网络级联过程</h3>
               <div class="view-controls">
-                <el-tooltip
-                  effect="dark"
-                  placement="top"
-                >
-                  <template #content>
-                    <div>
-                      <p><b>网络视图</b>：展示节点的传播状态，使用颜色区分未知晓（灰色）、已知晓（黄色）和已采纳（红色）的节点</p>
-                      <p><b>社区视图</b>：展示网络中的社区结构，相同颜色的节点属于同一社区，帮助理解信息在不同社区间的传播特征</p>
-                    </div>
-                  </template>
-                  <el-radio-group v-model="visualMode" size="small">
-                    <el-radio-button label="network">
-                      <el-icon class="view-icon"><Monitor /></el-icon>
-                      网络视图
-                    </el-radio-button>
-                    <el-radio-button label="community">
-                      <el-icon class="view-icon"><Share /></el-icon>
-                      社区视图
-                    </el-radio-button>
-                  </el-radio-group>
-                </el-tooltip>
-                <el-tooltip
-                  effect="dark"
-                  placement="top"
-                  max-width="400"
-                >
-                  <template #content>
-                    <div class="community-help">
-                      <h4>什么是网络社区？</h4>
-                      <p>在网络级联过程中，社区是指网络中紧密连接的节点群组。这些节点之间的连接较为密集，而与其他群组之间的连接较为稀疏。</p>
-                      <h4>社区的重要性：</h4>
-                      <ul>
-                        <li><b>信息传播</b>：社区结构影响信息的传播速度和范围。信息在社区内部传播较快，跨社区传播较慢。</li>
-                        <li><b>采纳行为</b>：同一社区的成员往往表现出相似的采纳行为，这与社会影响和群体压力有关。</li>
-                        <li><b>关键节点</b>：连接不同社区的节点（桥接节点）在信息传播中起着重要作用。</li>
-                      </ul>
-                      <h4>应用价值：</h4>
-                      <p>理解网络的社区结构有助于：</p>
-                      <ul>
-                        <li>预测信息传播路径</li>
-                        <li>识别关键影响者</li>
-                        <li>优化传播策略</li>
-                        <li>评估采纳阻力</li>
-                      </ul>
-                    </div>
-                  </template>
-                  <el-button
-                    type="info"
-                    plain
-                    size="small"
-                    class="help-button"
-                  >
-                    <el-icon><QuestionFilled /></el-icon>
-                    什么是社区？
-                  </el-button>
-                </el-tooltip>
+                <el-radio-group v-model="visualMode" size="small">
+                  <el-radio-button label="network">
+                    <el-icon class="view-icon"><Monitor /></el-icon>
+                    网络视图
+                  </el-radio-button>
+                  <el-radio-button label="community">
+                    <el-icon class="view-icon"><Share /></el-icon>
+                    社区视图
+                  </el-radio-button>
+                </el-radio-group>
               </div>
             </div>
           </template>
@@ -176,7 +361,7 @@
 
       <!-- 右侧：统计与分析 -->
       <el-col :span="8">
-                <el-card class="teaching-card">
+        <el-card class="teaching-card">
           <template #header>
             <div class="card-header">
               <h3>教学控制</h3>
@@ -278,8 +463,6 @@
             </el-row>
           </div>
         </el-card>
-
-        <!-- 教学控制面板 -->
       </el-col>
     </el-row>
 
@@ -366,7 +549,7 @@
 import { ref, onMounted, watch } from 'vue'
 import * as d3 from 'd3'
 import { ElMessage } from 'element-plus'
-import { Monitor, Share, QuestionFilled } from '@element-plus/icons-vue'
+import { Monitor, Share, QuestionFilled, Star, Grid } from '@element-plus/icons-vue'
 
 const VIVID_COLORS = [
   '#FF6B35', // 鲜艳橙色
@@ -388,14 +571,19 @@ export default {
   components: {
     Monitor,
     Share,
-    QuestionFilled
+    QuestionFilled,
+    Star,
+    Grid
   },
   setup() {
+    // 理论部分的展开状态
+    const activeTheorySection = ref(['concept'])
+    
     // 状态变量
     const networkSize = ref(50)
-    const adoptionThreshold = ref(0.3)
+    const adoptionThreshold = ref(0.2)  // 修改默认值为 0.2
     const propagationDelay = ref(3)
-    const seedCount = ref(3)
+    const seedCount = ref(5)  // 修改默认值为 5
     const visualMode = ref('network')
     const autoUpdate = ref(true)
     const teachingStep = ref(0)
@@ -553,8 +741,21 @@ export default {
         .attr('height', '100%')
         .attr('viewBox', [-width/2, -height/2, width, height])
 
+      // 创建一个容器组来包含所有网络元素
+      const container = svg.append('g')
+
+      // 添加缩放功能
+      const zoom = d3.zoom()
+        .scaleExtent([0.2, 3]) // 设置缩放范围
+        .on('zoom', (event) => {
+          container.attr('transform', event.transform)
+        })
+
+      svg.call(zoom)
+        .call(zoom.transform, d3.zoomIdentity) // 设置初始缩放状态
+
       // 创建箭头标记
-      svg.append('defs').append('marker')
+      container.append('defs').append('marker')
         .attr('id', 'arrowhead')
         .attr('viewBox', '0 -5 10 10')
         .attr('refX', NODE_RADIUS + 9)
@@ -576,7 +777,7 @@ export default {
         .force('collision', d3.forceCollide().radius(NODE_RADIUS * 1.5))
 
       // 添加连接
-      linkElements = svg.append('g')
+      linkElements = container.append('g')
         .selectAll('line')
         .data(links)
         .join('line')
@@ -586,7 +787,7 @@ export default {
         .attr('marker-end', 'url(#arrowhead)')
 
       // 添加节点
-      nodeElements = svg.append('g')
+      nodeElements = container.append('g')
         .selectAll('circle')
         .data(nodes)
         .join('circle')
@@ -611,6 +812,22 @@ export default {
           .attr('cx', d => d.x)
           .attr('cy', d => d.y)
       })
+
+      // 添加缩放提示
+      const zoomHint = svg.append('text')
+        .attr('class', 'zoom-hint')
+        .attr('x', -width/2 + 20)
+        .attr('y', -height/2 + 30)
+        .text('使用鼠标滚轮进行缩放')
+        .style('font-size', '14px')
+        .style('fill', '#666')
+        .style('opacity', 0.8)
+
+      // 3秒后淡出提示
+      zoomHint.transition()
+        .duration(3000)
+        .style('opacity', 0)
+        .remove()
     }
 
     // 拖拽功能
@@ -622,8 +839,11 @@ export default {
       }
 
       function dragged(event) {
-        event.subject.fx = event.x
-        event.subject.fy = event.y
+        // 获取当前的缩放变换
+        const transform = d3.zoomTransform(svg.node())
+        // 根据缩放比例调整拖拽位置
+        event.subject.fx = (event.x - transform.x) / transform.k
+        event.subject.fy = (event.y - transform.y) / transform.k
       }
 
       function dragended(event) {
@@ -1689,6 +1909,7 @@ export default {
       propagationSpeed,
       adoptionRate,
       estimatedCompletion,
+      activeTheorySection,
       
       // DOM引用
       networkContainer,
@@ -1721,93 +1942,512 @@ export default {
 
 <style scoped>
 .network-cascade-container {
-  padding: 20px 20px 60px 20px;
-  background-color: #f5f7fa;
+  padding: 20px;
+  background-color: #fff;
 }
 
-.control-panel {
+/* 理论卡片基础样式 */
+.theory-card {
   margin-bottom: 20px;
 }
 
-.main-content {
-  margin-bottom: 20px;
-}
-
-.visualization-card {
-  height: auto;
-  min-height: 500px;
+.theory-header h1 {
+  font-size: 32px !important;
+  margin: 0;
   display: flex;
-  flex-direction: column;
-  margin-bottom: 20px;
+  align-items: center;
+  gap: 15px;
+  color: #303133;
 }
 
-.network-container {
-  height: 450px;
-  background-color: white;
-  border-radius: 4px;
-  border: 1px solid #ebeef5;
-  flex: 1;
+.theory-content h3 {
+  font-size: 24px !important;
+  margin: 15px 0;
+  color: #303133;
 }
 
-.stats-card, .teaching-card {
-  margin-bottom: 20px;
-  height: auto;
+.theory-text {
+  font-size: 18px !important;
+  line-height: 1.8;
+  margin: 15px 0;
+  color: #606266;
 }
 
-.stats-card .el-card__body {
-  display: flex;
-  flex-direction: column;
+.theory-list li {
+  font-size: 18px !important;
+  margin: 12px 0;
+  padding-left: 25px;
+  line-height: 1.8;
+}
+
+.theory-list li strong {
+  font-size: 18px !important;
+  color: #409EFF;
+}
+
+.cascade-illustration {
   padding: 15px;
 }
 
-.teaching-card {
-  height: auto;
-  margin-bottom: 20px;
+.cascade-boxes {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
 }
 
-.teaching-card .el-card__body {
+.cascade-box {
+  background: #f5f7fa;
+  border-radius: 8px;
   padding: 15px;
+  border: 1px solid #e4e7ed;
 }
 
-.chart-container {
-  background: white;
-  border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 10px;
-  border: 1px solid #ebeef5;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  height: 180px;
-  overflow: hidden;
+.cascade-box h4 {
+  margin: 0 0 10px 0;
+  color: #409EFF;
 }
 
+.cascade-box p {
+  margin: 5px 0;
+  color: #606266;
+}
+
+.arrow {
+  text-align: center;
+  color: #409EFF;
+  font-size: 20px;
+}
+
+/* 网络类型卡片样式 */
+.network-type-card {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 20px;
+  height: 100%;
+  border: 1px solid #e4e7ed;
+}
+
+.network-type-card h3 {
+  font-size: 24px !important;
+  margin: 0 0 15px 0;
+  color: #303133;
+}
+
+.algorithm-name {
+  font-size: 20px !important;
+  color: #409EFF;
+  font-weight: 600;
+  margin: 10px 0 20px 0;
+}
+
+.network-features h4 {
+  font-size: 22px !important;
+  margin: 20px 0 15px 0;
+  color: #303133;
+}
+
+.network-features li {
+  font-size: 18px !important;
+  margin: 12px 0;
+  color: #606266;
+  line-height: 1.8;
+}
+
+.network-features strong {
+  font-size: 18px !important;
+  color: #409EFF;
+}
+
+/* 卡片样式 */
+.el-card {
+  background: #fff !important;
+  border: 1px solid #e4e7ed !important;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.3s ease;
+}
+
+.el-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 折叠面板样式 */
+.theory-collapse {
+  border: none;
+}
+
+:deep(.el-collapse-item__header) {
+  font-size: 20px !important;  /* 增大折叠面板标题字体 */
+  font-weight: 600;
+  color: #303133;
+  padding: 20px 0;
+  line-height: 1.6;
+}
+
+:deep(.el-collapse-item__header i) {
+  font-size: 20px !important;  /* 增大箭头图标大小 */
+  margin-right: 15px;
+}
+
+:deep(.el-collapse-item__content) {
+  padding: 25px;
+}
+
+/* 保持其他现有样式不变 */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 15px;
 }
 
 .control-buttons {
   display: flex;
+  gap: 10px;
+}
+
+/* 表单元素样式 */
+.el-form-item {
+  margin-bottom: 20px;
+}
+
+.el-slider__runway {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.el-slider__bar {
+  background-color: #409EFF !important;
+}
+
+/* 按钮样式 */
+.el-button {
+  border-radius: 12px !important;  /* 增大圆角 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.el-button:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.el-button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* 主要按钮样式 */
+.el-button--primary {
+  background: linear-gradient(135deg, #409EFF, #2c89ff) !important;
+  border: none !important;
+}
+
+.el-button--primary:hover {
+  background: linear-gradient(135deg, #66b1ff, #409EFF) !important;
+}
+
+/* 警告按钮样式 */
+.el-button--warning {
+  background: linear-gradient(135deg, #E6A23C, #d48b1f) !important;
+  border: none !important;
+}
+
+.el-button--warning:hover {
+  background: linear-gradient(135deg, #ebb563, #E6A23C) !important;
+}
+
+/* 默认按钮样式 */
+.el-button--default {
+  background: linear-gradient(135deg, #ffffff, #f5f7fa) !important;
+  border: 2px solid #dcdfe6 !important;
+}
+
+.el-button--default:hover {
+  border-color: #409EFF !important;
+  color: #409EFF !important;
+}
+
+/* 按钮内容布局 */
+.el-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 12px 24px !important;
+  font-weight: 600 !important;
+}
+
+/* 按钮图标样式 */
+.el-button i {
+  transition: transform 0.3s ease !important;
+}
+
+.el-button:hover i {
+  transform: scale(1.2) !important;
+}
+
+/* 禁用状态样式 */
+.el-button.is-disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  background: #f5f7fa !important;
+  border-color: #e4e7ed !important;
+  color: #c0c4cc !important;
+}
+
+/* 波纹效果 */
+.el-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease-out, height 0.6s ease-out;
+}
+
+.el-button:active::after {
+  width: 200%;
+  height: 200%;
+  opacity: 0;
+}
+
+/* 特殊按钮组样式 */
+.el-button-group {
+  display: inline-flex !important;
+  gap: 8px !important;
+}
+
+.el-button-group .el-button {
+  border-radius: 12px !important;
+}
+
+/* 控制面板按钮特殊样式 */
+.control-buttons .el-button {
+  min-width: 120px !important;
+}
+
+/* 教学工具按钮特殊样式 */
+.teaching-tools .el-button {
+  height: 48px !important;
+  font-size: 16px !important;
+}
+
+.teaching-tools .el-button .el-icon {
+  font-size: 20px !important;
+}
+
+/* 加载状态动画 */
+.el-button.is-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.el-button.is-loading::before {
+  content: '';
+  position: absolute;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* 图标悬停效果 */
+.el-icon-connection,
+.el-icon-cpu,
+.el-icon-setting,
+.el-icon-share,
+.el-icon-pie-chart,
+.el-icon-data-line,
+.el-icon-magic-stick {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.el-icon-connection:hover {
+  color: #FFD700 !important;
+  transform: scale(1.2) rotate(10deg);
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.el-icon-cpu:hover {
+  color: #ff6b6b !important;
+  transform: scale(1.2);
+  text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+}
+
+.el-icon-setting:hover {
+  color: #4ecdc4 !important;
+  transform: scale(1.2) rotate(45deg);
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+
+/* 图表容器样式 */
+.chart-container {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  min-height: 200px;
+}
+
+/* 图例样式 */
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.legend {
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+/* 提示框样式 */
+.el-tooltip__popper {
+  background: rgba(0, 0, 0, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(5px);
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* 网络可视化容器样式 */
+.network-container {
+  height: 500px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 统计卡片样式 */
+.stats-card {
+  margin-bottom: 20px;
+}
+
+/* 教学工具样式 */
+.teaching-tools {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 15px;
+}
+
+/* 步骤条样式 */
+.el-steps {
   margin-top: 15px;
+  background: #fff;
   padding: 15px;
-  background-color: rgba(248, 249, 250, 0.9);
   border-radius: 8px;
-  gap: 10px;
-  border: 1px solid #ebeef5;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border: 1px solid #e4e7ed;
+}
+
+.el-step__title {
+  color: #606266 !important;
+}
+
+.el-step__title.is-process {
+  color: #409EFF !important;
+  font-weight: bold;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .main-content .el-col {
+    width: 100% !important;
+    margin-bottom: 20px;
+  }
+  
+  .network-container {
+    height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .network-cascade-container {
+    padding: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .control-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .network-container {
+    height: 300px;
+  }
+  
+  .chart-container {
+    min-height: 150px;
+  }
+}
+
+/* D3图表tooltip样式 */
+.d3-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  max-width: 250px;
+}
+
+/* 图表悬停效果 */
+.chart svg {
+  overflow: visible;
+}
+
+.chart .bar,
+.chart .arc path {
+  transition: all 0.2s ease;
 }
 
 .legend-wrapper {
@@ -1918,22 +2558,28 @@ export default {
 .teaching-tools .el-button-group {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
+  margin-bottom: 5px;  /* 减小底部边距 */
 }
 
 .teaching-tools .el-button {
   flex: 1;
-  max-width: 150px;
+  max-width: 180px;  /* 增加按钮最大宽度 */
+  height: 48px;  /* 增加按钮高度 */
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 12px;
-  padding: 8px 12px;
+  gap: 8px;
+  font-size: 16px;  /* 增大按钮文字大小 */
+  padding: 12px 20px;  /* 增加按钮内边距 */
+}
+
+.teaching-tools .el-button .el-icon {
+  font-size: 20px;  /* 增大图标大小 */
 }
 
 .teaching-progress {
-  margin-top: 15px;
+  margin-top: 10px;  /* 减小顶部边距 */
   padding: 10px;
   background-color: white;
   border-radius: 4px;
@@ -2054,13 +2700,13 @@ export default {
 .community-help p {
   margin: 8px 0;
   line-height: 1.5;
-  color: #fff;
+  color: #606266;
 }
 
 .community-help ul {
   margin: 8px 0;
   padding-left: 16px;
-  color: #fff;
+  color: #606266;
 }
 
 .community-help li {
@@ -2069,7 +2715,7 @@ export default {
 }
 
 .community-help b {
-  color: #ffd700;
+  color: #409EFF;
 }
 
 .cascade-help {
@@ -2086,13 +2732,13 @@ export default {
 .cascade-help p {
   margin: 8px 0;
   line-height: 1.5;
-  color: #fff;
+  color: #606266;
 }
 
 .cascade-help ul {
   margin: 8px 0;
   padding-left: 16px;
-  color: #fff;
+  color: #606266;
 }
 
 .cascade-help li {
@@ -2101,7 +2747,7 @@ export default {
 }
 
 .cascade-help b {
-  color: #ffd700;
+  color: #409EFF;
 }
 
 .teaching-progress {
@@ -2264,5 +2910,313 @@ export default {
   .network-container {
     height: 250px;
   }
+}
+
+/* 控制面板样式 */
+.control-panel {
+  margin-bottom: 40px !important;
+}
+
+/* 控制面板卡片样式 */
+.control-card {
+  background: #fff !important;
+}
+
+.control-card .card-header h3 {
+  font-size: 24px !important;  /* 增大标题字体 */
+  font-weight: 600;
+}
+
+/* 表单元素样式 */
+.control-card .el-form-item__label {
+  font-size: 18px !important;  /* 增大标签文字 */
+  line-height: 2;
+  font-weight: 500;
+}
+
+.control-card .el-slider__input-number {
+  font-size: 16px !important;  /* 增大数字输入框字体 */
+}
+
+.control-card .el-input-number__decrease,
+.control-card .el-input-number__increase {
+  font-size: 16px !important;  /* 增大加减按钮字体 */
+}
+
+.control-card .el-button {
+  font-size: 18px !important;  /* 增大按钮文字 */
+  padding: 12px 24px;  /* 增大按钮内边距 */
+  height: auto;
+}
+
+.control-card .el-slider__marks-text {
+  font-size: 16px !important;  /* 增大滑块标记文字 */
+}
+
+.control-card .el-form-item {
+  margin-bottom: 25px;  /* 增加表单项之间的间距 */
+}
+
+/* 视图控制按钮组样式 */
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px !important;
+}
+
+.view-controls .el-radio-group {
+  display: flex;
+  gap: 12px;
+}
+
+.el-radio-button__inner {
+  border-radius: 12px !important;
+  padding: 12px 24px !important;
+  font-size: 16px !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid #dcdfe6 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: linear-gradient(135deg, #ffffff, #f5f7fa) !important;
+}
+
+.el-radio-button__orig-radio:checked + .el-radio-button__inner {
+  background: linear-gradient(135deg, #409EFF, #2c89ff) !important;
+  border-color: transparent !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3) !important;
+}
+
+.el-radio-button:first-child .el-radio-button__inner,
+.el-radio-button:last-child .el-radio-button__inner {
+  border-radius: 12px !important;
+}
+
+.el-radio-button__inner:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.el-radio-button__inner:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* 视图按钮图标样式 */
+.view-icon {
+  font-size: 18px !important;
+  margin-right: 6px !important;
+  transition: transform 0.3s ease !important;
+}
+
+.el-radio-button__inner:hover .view-icon {
+  transform: scale(1.2) rotate(10deg) !important;
+}
+
+/* 波纹效果 */
+.el-radio-button__inner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease-out, height 0.6s ease-out;
+}
+
+.el-radio-button__inner:active::after {
+  width: 200%;
+  height: 200%;
+  opacity: 0;
+}
+
+/* 选中状态特效 */
+@keyframes selected-pulse {
+  0% {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(64, 158, 255, 0.5);
+  }
+  100% {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  }
+}
+
+.el-radio-button__orig-radio:checked + .el-radio-button__inner {
+  animation: selected-pulse 2s infinite;
+}
+
+/* 禁用状态样式 */
+.el-radio-button.is-disabled .el-radio-button__inner {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  background: #f5f7fa !important;
+  border-color: #e4e7ed !important;
+  color: #c0c4cc !important;
+  box-shadow: none !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .view-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .el-radio-button__inner {
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+  }
+
+  .view-icon {
+    font-size: 16px !important;
+  }
+}
+
+/* 添加新的样式 */
+.scenario-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  height: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.scenario-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.scenario-card h3 {
+  font-size: 24px !important;
+  margin: 0 0 20px 0;
+  color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scenario-content h4 {
+  font-size: 18px !important;
+  margin: 15px 0 10px;
+  color: #409EFF;
+}
+
+.scenario-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+}
+
+.scenario-content li {
+  margin: 8px 0;
+  padding-left: 20px;
+  position: relative;
+  font-size: 16px;
+  color: #606266;
+}
+
+.scenario-content li:before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #409EFF;
+}
+
+.scenario-content strong {
+  color: #409EFF;
+}
+
+.scenario-card.positive {
+  border-left: 4px solid #67C23A;
+}
+
+.scenario-card.negative {
+  border-left: 4px solid #F56C6C;
+}
+
+.scenario-card.complex {
+  border-left: 4px solid #E6A23C;
+}
+
+/* 应用卡片样式 */
+.application-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  height: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.application-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.app-icon {
+  font-size: 32px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.application-card h3 {
+  font-size: 20px !important;
+  margin: 0 0 15px 0;
+  color: #303133;
+  text-align: center;
+}
+
+.app-content h4 {
+  font-size: 16px !important;
+  margin: 10px 0;
+  color: #409EFF;
+}
+
+.app-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+
+.app-content li {
+  margin: 6px 0;
+  padding-left: 16px;
+  position: relative;
+  font-size: 14px;
+  color: #606266;
+}
+
+.app-content li:before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #409EFF;
+}
+
+.app-insight {
+  background: #f5f7fa;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #606266;
+  margin-top: auto;
+}
+
+.app-insight strong {
+  color: #409EFF;
+  display: block;
+  margin-bottom: 4px;
 }
 </style>
