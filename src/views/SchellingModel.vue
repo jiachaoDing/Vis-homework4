@@ -21,11 +21,35 @@
           <li>即使个体只有轻微的偏好(如希望30%的邻居相同)，系统最终也会呈现高度隔离状态</li>
         </ul>
         
+        <h3>隔离指数计算</h3>
+        <p>隔离指数是衡量空间隔离程度的重要指标，计算方法如下：</p>
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #3498db;">
+          <p><strong>计算步骤：</strong></p>
+          <ol style="margin: 10px 0; padding-left: 20px; line-height: 1.6;">
+            <li>对于网格中的每个个体，统计其8个邻居位置（上下左右及四个对角）</li>
+            <li>计算该个体周围<strong>相同类型邻居的比例</strong> = 相同类型邻居数量 ÷ 总邻居数量</li>
+            <li>将所有个体的相同类型邻居比例相加</li>
+            <li>除以总个体数量，再乘以100%得到最终隔离指数</li>
+          </ol>
+          <p><strong>数学公式：</strong></p>
+          <div style="text-align: center; font-family: 'Courier New', monospace; background: white; padding: 12px; border-radius: 4px; margin: 10px 0; border: 1px solid #e1e8ed;">
+            隔离指数 = (∑(个体i的相同类型邻居比例) ÷ 总个体数) × 100%
+          </div>
+          <p><strong>指数含义：</strong></p>
+          <ul style="margin: 8px 0; line-height: 1.5;">
+            <li><span style="color: #27ae60; font-weight: bold;">▪ 0-30%</span>：低度隔离，两种类型混合居住</li>
+            <li><span style="color: #f39c12; font-weight: bold;">▪ 30-60%</span>：中度隔离，出现一定程度聚集</li>
+            <li><span style="color: #e67e22; font-weight: bold;">▪ 60-80%</span>：高度隔离，明显的空间分离</li>
+            <li><span style="color: #e74c3c; font-weight: bold;">▪ 80-100%</span>：极高隔离，几乎完全分离</li>
+          </ul>
+        </div>
+        
         <h3>模型参数</h3>
         <ul>
           <li><strong>网格大小</strong>：模拟区域的大小</li>
           <li><strong>满意阈值</strong>：个体希望周围相同类型邻居的最低比例</li>
           <li><strong>空置率</strong>：网格中空置单元格的比例</li>
+          <li><strong>类型1比例</strong>：在非空位置中类型1个体所占的比例，剩余位置由类型2填充</li>
         </ul>
         
         <h3>模型意义</h3>
@@ -144,6 +168,15 @@
               <el-form-item label="空置率">
                 <el-slider v-model="emptyRate" :min="0.1" :max="0.5" :step="0.1" show-input />
               </el-form-item>
+              <el-form-item label="类型1比例">
+                <el-slider 
+                  v-model="type1Ratio" 
+                  :min="0.1" 
+                  :max="0.9" 
+                  :step="0.1" 
+                  :format-tooltip="formatType1RatioTooltip"
+                  show-input />
+              </el-form-item>
               <el-form-item label="模拟速度">
                 <el-slider 
                   v-model="simulationSpeed" 
@@ -161,6 +194,8 @@
               <el-descriptions-item label="迭代次数">{{ iterations }}</el-descriptions-item>
               <el-descriptions-item label="隔离指数">{{ segregationIndex }}%</el-descriptions-item>
               <el-descriptions-item label="不满意个体">{{ unsatisfiedCount }}</el-descriptions-item>
+              <el-descriptions-item label="类型1比例">{{ actualType1Ratio }}%</el-descriptions-item>
+              <el-descriptions-item label="类型2比例">{{ actualType2Ratio }}%</el-descriptions-item>
             </el-descriptions>
           </el-card>
         </el-col>
@@ -275,11 +310,14 @@ export default {
       gridSize: 20,
       threshold: 0.3,
       emptyRate: 0.2,
+      type1Ratio: 0.5, // 类型1的比例，剩余的非空位置由类型2填充
       simulationSpeed: 5,
       grid: [],
       iterations: 0,
       segregationIndex: 0,
       unsatisfiedCount: 0,
+      actualType1Ratio: 0, // 实际类型1比例
+      actualType2Ratio: 0, // 实际类型2比例
       isRunning: false,
       intervalId: null,
       historyData: {
@@ -368,6 +406,10 @@ export default {
       return `${val}x`
     },
     
+    formatType1RatioTooltip(val) {
+      return `${(val * 100).toFixed(0)}%`
+    },
+    
     initializeGrid() {
       this.stopSimulation()
       this.iterations = 0
@@ -380,10 +422,15 @@ export default {
           const rand = Math.random()
           if (rand < this.emptyRate) {
             this.grid[i][j] = 0 // 空置
-          } else if (rand < this.emptyRate + (1 - this.emptyRate) / 2) {
-            this.grid[i][j] = 1 // 类型1
           } else {
-            this.grid[i][j] = 2 // 类型2
+            // 在剩余的非空位置中按type1Ratio比例分配类型
+            const remainingRate = 1 - this.emptyRate
+            const type1Threshold = this.emptyRate + remainingRate * this.type1Ratio
+            if (rand < type1Threshold) {
+              this.grid[i][j] = 1 // 类型1
+            } else {
+              this.grid[i][j] = 2 // 类型2
+            }
           }
         }
       }
@@ -590,6 +637,8 @@ export default {
     calculateStatistics() {
       let unsatisfied = 0
       let totalAgents = 0
+      let type1Count = 0
+      let type2Count = 0
       let segregationSum = 0
       
       // 重置满意度分布数据
@@ -604,14 +653,16 @@ export default {
             totalAgents++
             const isSatisfied = this.isSatisfied(i, j)
             
-            // 更新满意度分布数据
+            // 统计类型数量
             if (this.grid[i][j] === 1) {
+              type1Count++
               if (isSatisfied) {
                 this.satisfactionDistribution.satisfied.type1++
               } else {
                 this.satisfactionDistribution.unsatisfied.type1++
               }
             } else {
+              type2Count++
               if (isSatisfied) {
                 this.satisfactionDistribution.satisfied.type2++
               } else {
@@ -635,6 +686,10 @@ export default {
       
       this.unsatisfiedCount = unsatisfied
       this.segregationIndex = totalAgents > 0 ? ((segregationSum / totalAgents) * 100).toFixed(1) : 0
+      
+      // 计算实际类型比例
+      this.actualType1Ratio = totalAgents > 0 ? ((type1Count / totalAgents) * 100).toFixed(1) : 0
+      this.actualType2Ratio = totalAgents > 0 ? ((type2Count / totalAgents) * 100).toFixed(1) : 0
     },
     
     getNeighbors(x, y) {
@@ -1515,7 +1570,8 @@ calculateSmoothedValue(indices) {
         parameters: {
           gridSize: this.gridSize,
           threshold: this.threshold,
-          emptyRate: this.emptyRate
+          emptyRate: this.emptyRate,
+          type1Ratio: this.type1Ratio
         },
         statistics: {
           iterations: this.iterations,
@@ -2331,7 +2387,7 @@ updateGauge() {
         .attr("class", "y-label-right")
         .attr("transform", "rotate(90)")
         .attr("x", height / 2)
-        .attr("y", -width - 45)
+        .attr("y", -width - margin.right + 15)
         .attr("text-anchor", "middle")
         .attr("font-size", "11px")
         .attr("fill", "#3498db")
