@@ -159,15 +159,15 @@
           <!-- 图例说明 -->
           <div class="legend">
             <div class="legend-item">
-              <div class="legend-color" style="background-color: #gray"></div>
+              <div class="legend-color" style="background-color: gray"></div>
               <span>未知晓</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color" style="background-color: #yellow"></div>
+              <div class="legend-color" style="background-color: gold"></div>
               <span>已知晓</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color" style="background-color: #red"></div>
+              <div class="legend-color" style="background-color: #ff4444"></div>
               <span>已采纳</span>
             </div>
           </div>
@@ -1707,8 +1707,9 @@ export default {
 <style scoped>
 .network-cascade-container {
   padding: 20px;
-  height: 100vh;
+  min-height: 100vh;
   background-color: #f5f7fa;
+  overflow-y: auto;
 }
 
 .control-panel {
@@ -1716,27 +1717,51 @@ export default {
 }
 
 .main-content {
-  height: calc(100vh - 200px);
+  min-height: calc(100vh - 200px);
 }
 
 .visualization-card {
-  height: 100%;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
 }
 
 .network-container {
-  height: calc(100% - 100px);
+  height: 450px;
   background-color: white;
   border-radius: 4px;
+  border: 1px solid #ebeef5;
+  flex: 1;
 }
 
 .stats-card, .teaching-card {
   margin-bottom: 20px;
+  height: auto;
+}
+
+.stats-card {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-card .el-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.teaching-card {
+  height: 180px;
 }
 
 .chart-container {
   background: white;
   border-radius: 4px;
-  padding: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .card-header {
@@ -1760,11 +1785,13 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 10px;
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
+  margin-top: 15px;
+  padding: 15px;
+  background-color: rgba(248, 249, 250, 0.9);
+  border-radius: 8px;
   gap: 10px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .legend-wrapper {
@@ -1773,10 +1800,11 @@ export default {
   gap: 20px;
   padding: 8px 16px;
   background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   flex-wrap: wrap;
   justify-content: center;
+  border: 1px solid #e4e7ed;
 }
 
 .legend-item {
@@ -1784,6 +1812,9 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
 }
 
 .state-indicator {
@@ -1793,16 +1824,18 @@ export default {
   gap: 20px;
   padding: 8px;
   background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e4e7ed;
 }
 
 .legend-color {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px solid white;
-  box-shadow: 0 0 2px rgba(0,0,0,0.2);
+  box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  flex-shrink: 0;
 }
 
 .key-metrics {
@@ -2099,5 +2132,101 @@ export default {
   justify-content: flex-end;
   gap: 12px;
   padding-top: 20px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .main-content .el-col:first-child {
+    width: 100% !important;
+    margin-bottom: 20px;
+  }
+  
+  .main-content .el-col:last-child {
+    width: 100% !important;
+  }
+  
+  .network-container {
+    height: 400px;
+  }
+  
+  .visualization-card {
+    height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .network-cascade-container {
+    padding: 10px;
+  }
+  
+  .control-panel .el-col {
+    margin-bottom: 10px;
+  }
+  
+  .control-panel .el-row {
+    margin: 0 -5px;
+  }
+  
+  .control-panel .el-col {
+    padding: 0 5px;
+  }
+  
+  .network-container {
+    height: 300px;
+  }
+  
+  .chart-container {
+    padding: 10px;
+  }
+  
+  .key-metrics {
+    padding: 10px;
+    height: auto;
+  }
+  
+  .metric-item {
+    padding: 5px;
+    margin-bottom: 10px;
+  }
+  
+  .metric-value {
+    font-size: 24px;
+  }
+  
+  .metric-value .number {
+    font-size: 24px;
+  }
+  
+  .metric-value .unit {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .control-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .view-controls {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .legend-wrapper {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .network-container {
+    height: 250px;
+  }
 }
 </style>
