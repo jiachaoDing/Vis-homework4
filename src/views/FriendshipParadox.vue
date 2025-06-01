@@ -8,6 +8,8 @@
             <i class="el-icon-connection"></i> 朋友悖论 (Friendship Paradox)
           </h1>
         </div>
+        <p class="developer-signature" style="text-align: center;"> 开发者：丁家超</p>
+
       </template>
 
       <el-collapse v-model="activeTheorySection" class="theory-collapse">

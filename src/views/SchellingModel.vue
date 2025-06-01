@@ -3,7 +3,7 @@
     <!-- 添加介绍弹窗 -->
     <el-dialog
       v-model="showIntroDialog"
-      title="谢林模型介绍                 制作人贾书凡"
+      title="谢林模型介绍                 "
       width="60%"
       :show-close="true"
       :close-on-click-modal="true"
@@ -127,6 +127,7 @@
         <div class="header">
           <div>
             <h2>谢林模型模拟</h2>
+            <p class="developer-signature">开发者：贾书凡</p>
             <p>模拟种族隔离现象的动态演化过程</p>
           </div>
           <el-button-group>

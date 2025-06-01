@@ -7,6 +7,7 @@
           <h1>
             <i class="el-icon-connection"></i> 网络级联 (Network Cascade)
           </h1>
+          <p class="developer-signature">开发者：王嘉</p>
         </div>
       </template>
 
@@ -3150,4 +3151,5 @@ export default {
   display: block;
   margin-bottom: 4px;
 }
+
 </style>

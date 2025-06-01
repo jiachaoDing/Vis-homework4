@@ -6,6 +6,7 @@
           <span>
             <h2>表决问题分析器</h2>
             <p>深入探索投票机制中的孔多塞悖论、单峰性质及多种决策模型。本工具旨在帮助理解群体决策的复杂性。</p>
+            <p class="developer-signature">开发者：肖富帅</p>
           </span>
           <!-- 使用指南按钮已被移除 -->
         </div>
@@ -1790,5 +1791,14 @@ export default {
   font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
+}
+
+/* 开发者署名样式 */
+.developer-signature {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 5px 0 0 0;
+  font-style: italic;
+  font-weight: 500;
 }
 </style>

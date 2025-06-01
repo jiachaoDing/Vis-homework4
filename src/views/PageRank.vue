@@ -6,6 +6,7 @@
           <div>
             <h2>PageRank算法演示</h2>
             <p>演示如何计算网络中每个节点的重要性分数</p>
+            <p class="developer-signature"> 开发者：张宏亦</p>
           </div>
           <el-button type="info" @click="showHelpDialog = true" icon="el-icon-question">
             算法说明
@@ -1164,5 +1165,14 @@ export default {
   display: flex;
   justify-content: center;
   gap: 10px;
+}
+
+/* 开发者署名样式 */
+.developer-signature {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 5px 0 0 0;
+  font-style: italic;
+  font-weight: 500;
 }
 </style>
