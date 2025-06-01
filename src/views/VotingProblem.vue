@@ -8,7 +8,15 @@
             <p>深入探索投票机制中的孔多塞悖论、单峰性质及多种决策模型。本工具旨在帮助理解群体决策的复杂性。</p>
             <p class="developer-signature">开发者：肖富帅</p>
           </span>
-          <!-- 使用指南按钮已被移除 -->
+          <!-- 使用指南按钮 -->
+          <el-button 
+            type="info" 
+            icon="el-icon-question" 
+            @click="openHelpDialog"
+            style="margin-left: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);"
+            size="medium">
+            使用指南与核心概念
+          </el-button>
         </div>
       </template>
 
@@ -208,9 +216,42 @@
                       <p v-if="!isProfileCompletelySinglePeaked && analysisDone && validVotes > 0" class="warning-text">注意：当前投票集在该假设维度下并非完全单峰。</p>
                       <p v-if="isProfileCompletelySinglePeaked && analysisDone && validVotes > 0" class="success-text">当前投票集在该假设维度下表现出良好的单峰性。</p>
                       <p v-if="validVotes === 0 && analysisDone" class="info-text">无有效投票，无法进行单峰性分析。</p>
-                      <el-button size="small" @click="changeAssumedDimension" icon="el-icon-refresh" style="margin-top:10px;" :disabled="!analysisDone || candidates.length < 2">随机调整假设维度</el-button>
+                      
+                      <!-- 自定义假设维度输入 -->
+                      <el-form label-width="100px" style="margin: 15px 0;">
+                        <el-form-item label="自定义维度">
+                          <el-input 
+                            v-model="customDimensionInput" 
+                            placeholder="例如: A,B,C,D 或 A > B > C > D"
+                            :disabled="!analysisDone || candidates.length < 2"
+                            @keyup.enter="applyCustomDimension"
+                          />
+                        </el-form-item>
+                        <el-form-item>
+                          <el-button-group style="width: 100%;">
+                            <el-button size="small" @click="changeAssumedDimension" icon="el-icon-refresh" style="flex: 1;" :disabled="!analysisDone || candidates.length < 2">随机调整假设维度</el-button>
+                            <el-button size="small" @click="applyCustomDimension" icon="el-icon-check" style="flex: 1;" :disabled="!analysisDone || candidates.length < 2 || !customDimensionInput.trim()">应用自定义维度</el-button>
+                          </el-button-group>
+                        </el-form-item>
+                      </el-form>
+                      
                       <el-button size="small" @click="removeNonSinglePeakedVotes" icon="el-icon-scissors" style="margin-top:10px;" :disabled="!analysisDone || singlePeakedVoteCount === validVotes || validVotes === 0"
                                  v-if="validVotes > 0 && singlePeakedVoteCount < validVotes">移除不符合单峰偏好的投票 ({{ validVotes - singlePeakedVoteCount }} 票)</el-button>
+                      
+                      <!-- 自动寻找最佳维度按钮 -->
+                      <el-button size="small" @click="findOptimalSinglePeakedDimension" icon="el-icon-search" style="margin-top:10px; margin-left: 10px;" 
+                                 :disabled="!analysisDone || candidates.length > 6" :loading="searchingOptimalDimension">
+                        {{ searchingOptimalDimension ? '搜索中...' : '自动寻找最佳单峰维度' }}
+                        <span v-if="candidates.length > 6" style="font-size: 11px;">(候选项>6时不可用)</span>
+                      </el-button>
+                      
+                      <!-- 恢复票据按钮 -->
+                      <el-button size="small" @click="restoreRemovedSinglePeakedVotes" icon="el-icon-refresh-left" style="margin-top:10px; margin-left: 10px;" 
+                                 v-if="removedSinglePeakedVoteCount > 0" type="warning">恢复因单峰性移除的投票 ({{ removedSinglePeakedVoteCount }} 票)</el-button>
+                      
+                      <!-- 手动寻找维度的帮助按钮 -->
+                      <el-button size="small" @click="showSinglePeakednessHelp" icon="el-icon-question" style="margin-top:10px; margin-left: 10px;" 
+                                 type="info" plain>如何手动寻找单峰维度？</el-button>
                     </div>
                   </el-card>
                   <el-card shadow="never" style="margin-top: 20px;">
@@ -266,75 +307,46 @@
       </el-row>
     </el-card>
 
-    <el-dialog title="使用指南与核心概念" :visible.sync="showHelpDialog" width="60%">
-      <h4>欢迎使用表决问题分析器！</h4>
-      <p>本工具旨在帮助您理解和分析各种投票情景下的群体决策过程和可能出现的现象。</p>
-      
-      <h4>基本使用流程：</h4>
-      <ol>
-        <li><strong>参数设置:</strong>
-          <ul>
-            <li><strong>随机生成:</strong> 选择投票人数和候选项数，点击"生成新投票并深度分析"即可快速开始。</li>
-            <li><strong>手动定义:</strong> 输入候选项（英文逗号分隔，如A,B,C），设定投票人数，然后为每位投票人输入其偏好排序（例如 "A > B > C" 或 "A,B,C"）。完成后点击"使用手动数据分析"。</li>
-          </ul>
-        </li>
-        <li><strong>核心分析摘要:</strong> 在左侧查看关键结果，如是否存在孔多塞悖论、谁是孔多塞胜者等。</li>
-        <li><strong>详细分析标签页:</strong>
-          <ul>
-            <li><strong>投票与比较矩阵:</strong> 查看原始投票数据和两两比较的热力图。</li>
-            <li><strong>悖论与循环图:</strong> 可视化候选项间的胜负关系，高亮显示潜在的孔多塞悖论循环。</li>
-            <li><strong>排序与得分图:</strong> 查看基于Copeland得分的候选项排名和得分条形图，以及综合排名阶梯图。</li>
-            <li><strong>单峰性分析:</strong> 探索投票是否符合单峰性质，调整假设维度，查看偏好曲线，并验证中位项定理。</li>
-          </ul>
-        </li>
-         <li><strong>废票处理:</strong> 系统会自动进行初步的投票有效性检测。您也可以在"废票处理"部分手动移除被标记为无效的选票，并重新分析。在"单峰性分析"中，还可以移除不符合单峰性的选票。</li>
-      </ol>
+    <el-dialog 
+      title="使用指南与核心概念" 
+      v-model="showHelpDialog" 
+      width="60%">
+      <div style="max-height: 70vh; overflow-y: auto;">
+        <h4>欢迎使用表决问题分析器！</h4>
+        <p>本工具旨在帮助您理解和分析各种投票情景下的群体决策过程和可能出现的现象。</p>
+        
+        <h4>基本使用流程：</h4>
+        <ol>
+          <li><strong>参数设置:</strong> 选择随机生成或手动定义投票数据</li>
+          <li><strong>核心分析摘要:</strong> 查看孔多塞悖论、胜者等关键结果</li>
+          <li><strong>详细分析标签页:</strong> 深入了解投票矩阵、循环图、排序等</li>
+          <li><strong>单峰性分析:</strong> 探索投票的单峰性质和中位投票者定理</li>
+        </ol>
 
-      <h4>核心概念解读：</h4>
-      <el-collapse accordion>
-        <el-collapse-item title="孔多塞胜者 (Condorcet Winner)" name="1">
-          <div>
-            <p>孔多塞胜者是指能够在一对一的比较中击败所有其他候选项的那个候选项。如果存在这样的候选项，通常被认为是最能代表群体意愿的选择。</p>
-            <p><strong>如何在本工具中观察:</strong></p>
-            <ul>
-              <li>在"核心分析摘要"中会直接显示孔多塞胜者（如果存在且无悖论）。</li>
-              <li>在"投票与比较矩阵"标签页的热力图中，孔多塞胜者所在行对其余所有候选项的数值应均大于对应列的数值。</li>
-              <li>在"悖论与循环图"中，如果没有循环，孔多塞胜者通常是所有箭头最终指向的源头（或者说，没有箭头指向它而它能击败其他所有）。</li>
-            </ul>
-          </div>
-        </el-collapse-item>
-        <el-collapse-item title="孔多塞悖论 (Condorcet Paradox)" name="2">
-          <div>
-            <p>孔多塞悖论（又称投票悖论）描述的是一种情况：即使个体投票者的偏好是理性的（可传递的），群体的偏好也可能形成循环，导致无法选出一个孔多塞胜者。例如，群体可能偏好A胜于B，B胜于C，但同时又偏好C胜于A (A > B > C > A)。</p>
-            <p><strong>如何在本工具中观察:</strong></p>
-            <ul>
-              <li>"核心分析摘要"会提示"显著存在"孔多塞悖论。</li>
-              <li>在"悖论与循环图"标签页，如果存在悖论，图上会用高亮（通常是红色）的箭头清晰地标示出这种偏好循环。</li>
-            </ul>
-          </div>
-        </el-collapse-item>
-        <el-collapse-item title="单峰性质 (Single-Peakedness)" name="3">
-          <div>
-            <p>单峰性是投票理论中的一个重要概念。如果投票人的偏好是单峰的，那么意味着所有候选项可以沿着某个一维的"政治光谱"或"政策维度"排列，使得每个投票人对这些候选项的偏好从其最喜欢的那个（峰顶）开始，向光谱的两边单调递减（或保持不变然后递减）。也就是说，投票者不会认为在A和C都比B差的情况下，却更喜欢B。</p>
-            <p><strong>为何重要:</strong> 当所有投票者的偏好都是单峰的，并且投票人数为奇数时，中位投票者最偏好的那个候选项就是孔多塞胜者。这使得群体决策更为稳定和可预测。</p>
-            <p><strong>如何在本工具中观察:</strong></p>
-            <ul>
-              <li>在"单峰性分析"标签页：
-                <ul>
-                  <li>可以尝试不同的"假设维度"（即候选项的排列顺序）。</li>
-                  <li>"单峰性检测摘要"会显示在当前维度下有多少投票符合单峰特性。</li>
-                  <li>"偏好分布曲线图"直观展示每个投票人的偏好曲线，帮助判断其是否单峰。单峰曲线应该只有一个峰值（或平顶）。</li>
-                  <li>可以尝试"移除不符合单峰偏好的投票"来观察对结果的影响。</li>
-                  <li>可以通过"中位项定理验证"部分来检验理论预测。</li>
-                </ul>
-              </li>
-            </ul>
-          </div>
-        </el-collapse-item>
-      </el-collapse>
-      <span slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="showHelpDialog = false">我明白了</el-button>
-      </span>
+        <h4>🎯 新功能亮点：</h4>
+        <ul>
+          <li><strong>智能单峰性分析：</strong> 自动寻找最佳维度排序</li>
+          <li><strong>投票恢复机制：</strong> 安全的数据备份和恢复</li>
+          <li><strong>理论验证工具：</strong> 验证中位投票者定理</li>
+        </ul>
+        
+        <h4>📖 核心概念：</h4>
+        <ul>
+          <li><strong>🏆 孔多塞胜者:</strong> 能击败所有其他候选项的选项</li>
+          <li><strong>🔄 孔多塞悖论:</strong> 群体偏好形成循环的现象</li>
+          <li><strong>🏔️ 单峰性质:</strong> 投票人偏好在维度上的单峰分布</li>
+        </ul>
+        
+        <p style="text-align: center; margin-top: 20px; color: #666; font-style: italic;">
+          💡 更多详细概念解释请在分析过程中查看各标签页的说明信息
+        </p>
+      </div>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button type="primary" @click="showHelpDialog = false">我明白了</el-button>
+        </span>
+      </template>
     </el-dialog>
 
   </div>
@@ -385,6 +397,10 @@ export default {
       manualPlaceholders: [],
 
       condorcetWinnerDemoResult: '',
+      customDimensionInput: '',
+      removedSinglePeakedVoteCount: 0,
+      originalVotesBackup: [], // 保存原始投票数据的备份
+      searchingOptimalDimension: false,
     };
   },
   created() {
@@ -401,7 +417,9 @@ export default {
         this.parseManualCandidates(); // Ensure candidates are ready for manual input display
         this.adjustManualVoteInputs();
     }
-    this.showHelpDialog = true; // 页面加载时自动弹出帮助对话框
+    
+    // 初始化自定义维度输入框的占位符
+    this.updateCustomDimensionPlaceholder();
   },
   methods: {
     generateAndAnalyze() {
@@ -567,6 +585,12 @@ export default {
         this.clearPreviousAnalysis();
         return;
       }
+      
+      // 创建原始投票数据的备份（只在第一次分析或重新生成数据时）
+      if (this.originalVotesBackup.length === 0 || showSuccessDialog) {
+        this.originalVotesBackup = JSON.parse(JSON.stringify(this.votes));
+      }
+      
       // For manual votes, validity is partially checked during input parsing.
       // For random votes, or further checks on manual votes:
       if (this.activeVoteInputMode === 'random' || this.votes.some(v => v.validityReason.startsWith('有效 (手动输入)'))) {
@@ -634,6 +658,10 @@ export default {
         this.singlePeakedVoteCount = 0;
         this.isProfileCompletelySinglePeaked = false;
         this.condorcetWinnerDemoResult = '';
+        this.customDimensionInput = '';
+        this.removedSinglePeakedVoteCount = 0;
+        this.originalVotesBackup = [];
+        this.searchingOptimalDimension = false;
         this.clearVisualizations();
         this.updateVoteData();
     },
@@ -1025,9 +1053,63 @@ export default {
             this.$message.info("候选项少于2个，无法改变维度顺序。");
             return;
         }
+        
+        // 在调整假设维度前，恢复所有因单峰性被移除的投票
+        this.restoreRemovedSinglePeakedVotesQuietly();
+        
         this.assumedDimensionOrder = _.shuffle(this.assumedDimensionOrder);
         this.$message({
           message: `🔄 假设维度已更新：${this.assumedDimensionOrder.join(' → ')}`,
+          type: 'success',
+          duration: 3500,
+          showClose: true
+        });
+        
+        // Only re-analyze single-peakedness and its dependent charts
+        this.analyzeSinglePeakedness();
+        this.renderPreferenceCurveChart();
+        this.condorcetWinnerDemoResult = ''; // Reset demo as dimension changed
+    },
+
+    applyCustomDimension() {
+        if (!this.customDimensionInput.trim()) {
+            this.$message.warn("请输入自定义维度排序。");
+            return;
+        }
+        
+        // 解析自定义维度输入
+        let parsedDimension = [];
+        if (this.customDimensionInput.includes('>')) {
+            parsedDimension = this.customDimensionInput.split('>').map(c => c.trim().toUpperCase()).filter(c => c !== '');
+        } else {
+            parsedDimension = this.customDimensionInput.split(',').map(c => c.trim().toUpperCase()).filter(c => c !== '');
+        }
+        
+        // 验证输入的候选项是否都存在
+        const invalidCandidates = parsedDimension.filter(c => !this.candidates.includes(c));
+        if (invalidCandidates.length > 0) {
+            this.$message.error(`无效的候选项：${invalidCandidates.join(', ')}。请输入有效的候选项：${this.candidates.join(', ')}`);
+            return;
+        }
+        
+        // 检查是否包含所有候选项
+        const missingCandidates = this.candidates.filter(c => !parsedDimension.includes(c));
+        if (missingCandidates.length > 0) {
+            this.$message.warn(`缺少候选项：${missingCandidates.join(', ')}。已自动添加到维度末尾。`);
+            parsedDimension = [...parsedDimension, ...missingCandidates];
+        }
+        
+        // 去重并保持顺序
+        parsedDimension = [...new Set(parsedDimension)];
+        
+        // 在调整假设维度前，恢复所有因单峰性被移除的投票
+        this.restoreRemovedSinglePeakedVotesQuietly();
+        
+        this.assumedDimensionOrder = parsedDimension;
+        this.customDimensionInput = '';
+        
+        this.$message({
+          message: `✅ 自定义假设维度已应用：${this.assumedDimensionOrder.join(' → ')}`,
           type: 'success',
           duration: 3500,
           showClose: true
@@ -1055,6 +1137,8 @@ export default {
             }
         });
 
+        this.removedSinglePeakedVoteCount += removedCount; // 累积记录移除的票数
+
         if (removedCount > 0) {
             this.$message({
               message: `📊 已移除 ${removedCount} 张不符合单峰性的投票，重新分析中...`,
@@ -1062,7 +1146,7 @@ export default {
               duration: 3500,
               showClose: true
             });
-            this.analyzeAll(true); // 用户移除不符合单峰性投票后重新分析时显示弹窗
+            this.analyzeAll(false); // 不显示成功弹窗，因为这是中间操作
         } else {
             this.$message({
               message: `ℹ️ 没有可移除的非单峰投票`,
@@ -1071,6 +1155,49 @@ export default {
               showClose: true
             });
         }
+    },
+
+    restoreRemovedSinglePeakedVotes() {
+        if (this.originalVotesBackup.length === 0) {
+            this.$message.warn("没有备份数据可恢复。");
+            return;
+        }
+        
+        // 从备份中恢复所有原始投票数据
+        this.votes = JSON.parse(JSON.stringify(this.originalVotesBackup));
+        this.removedSinglePeakedVoteCount = 0;
+        
+        this.$message({
+          message: `🔄 已恢复所有原始投票数据，重新分析中...`,
+          type: 'success',
+          duration: 3500,
+          showClose: true
+        });
+        
+        this.analyzeAll(false); // 重新分析但不显示成功弹窗
+    },
+
+    restoreRemovedSinglePeakedVotesQuietly() {
+        if (this.originalVotesBackup.length === 0) {
+            return;
+        }
+        
+        // 静默恢复：只恢复因单峰性被移除的投票，保留其他无效票的状态
+        const currentValidVotes = this.votes.filter(v => v.valid);
+        const backupVotes = JSON.parse(JSON.stringify(this.originalVotesBackup));
+        
+        // 恢复因单峰性被移除的投票
+        this.votes.forEach((vote, index) => {
+            if (!vote.valid && vote.validityReason === "因不符合当前假设维度下单峰性而被移除") {
+                // 从备份中恢复该票的原始状态
+                const originalVote = backupVotes.find(bv => bv.voter === vote.voter);
+                if (originalVote) {
+                    Object.assign(vote, originalVote);
+                }
+            }
+        });
+        
+        this.removedSinglePeakedVoteCount = 0;
     },
 
     demonstrateCondorcetViaMedianVoter() {
@@ -1619,6 +1746,274 @@ export default {
                 .attr("stroke-width", 0.5);
         });
     },
+
+    updateCustomDimensionPlaceholder() {
+        // 动态更新自定义维度输入框的占位符，基于当前候选项
+        if (this.candidates.length > 0) {
+            const exampleOrder = [...this.candidates].sort();
+            this.customDimensionInput = '';
+            // 更新组件的placeholder属性通过重新渲染实现
+            this.$nextTick(() => {
+                const inputElement = this.$el.querySelector('input[placeholder*="例如"]');
+                if (inputElement) {
+                    inputElement.placeholder = `例如: ${exampleOrder.join(',')} 或 ${exampleOrder.join(' > ')}`;
+                }
+            });
+        }
+    },
+    findOptimalSinglePeakedDimension() {
+        this.searchingOptimalDimension = true;
+        const localValidVotes = this.votes.filter(v => v.valid);
+        
+        if (localValidVotes.length === 0) {
+            this.$message.warn("没有有效投票可用于寻找最佳维度。");
+            this.searchingOptimalDimension = false;
+            return;
+        }
+
+        // 恢复所有因单峰性被移除的投票
+        this.restoreRemovedSinglePeakedVotesQuietly();
+
+        // 异步执行搜索算法以避免阻塞UI
+        this.$nextTick(() => {
+            setTimeout(() => {
+                let bestDimension = null;
+                let maxSinglePeakedCount = 0;
+                let searchResults = [];
+
+                if (this.candidates.length <= 6) {
+                    // 穷举搜索：尝试所有可能的排列
+                    const allPermutations = this.generatePermutations(this.candidates);
+                    
+                    for (const permutation of allPermutations) {
+                        const singlePeakedCount = this.countSinglePeakedVotesForDimension(permutation, localValidVotes);
+                        searchResults.push({
+                            dimension: [...permutation],
+                            count: singlePeakedCount,
+                            percentage: (singlePeakedCount / localValidVotes.length * 100).toFixed(1)
+                        });
+                        
+                        if (singlePeakedCount > maxSinglePeakedCount) {
+                            maxSinglePeakedCount = singlePeakedCount;
+                            bestDimension = [...permutation];
+                        }
+                    }
+                } else {
+                    // 启发式搜索：使用贪心算法和随机搜索
+                    bestDimension = this.heuristicDimensionSearch(localValidVotes);
+                    maxSinglePeakedCount = this.countSinglePeakedVotesForDimension(bestDimension, localValidVotes);
+                    searchResults.push({
+                        dimension: [...bestDimension],
+                        count: maxSinglePeakedCount,
+                        percentage: (maxSinglePeakedCount / localValidVotes.length * 100).toFixed(1)
+                    });
+                }
+
+                // 应用找到的最佳维度
+                if (bestDimension && maxSinglePeakedCount > this.singlePeakedVoteCount) {
+                    this.assumedDimensionOrder = bestDimension;
+                    this.analyzeSinglePeakedness();
+                    this.renderPreferenceCurveChart();
+                    this.condorcetWinnerDemoResult = '';
+                    
+                    const improvement = maxSinglePeakedCount - this.singlePeakedVoteCount;
+                    this.$message({
+                        message: `🔍 找到更优维度：${bestDimension.join(' → ')}\n单峰投票数提升：${improvement} 票 (${maxSinglePeakedCount}/${localValidVotes.length})`,
+                        type: 'success',
+                        duration: 4000,
+                        showClose: true
+                    });
+                    
+                    // 显示搜索结果摘要
+                    if (this.candidates.length <= 6) {
+                        this.showDimensionSearchResults(searchResults);
+                    }
+                } else {
+                    this.$message({
+                        message: `🔍 搜索完成：当前维度已是最优解\n单峰投票数：${maxSinglePeakedCount}/${localValidVotes.length} (${(maxSinglePeakedCount/localValidVotes.length*100).toFixed(1)}%)`,
+                        type: 'info',
+                        duration: 3500,
+                        showClose: true
+                    });
+                }
+                
+                this.searchingOptimalDimension = false;
+            }, 100); // 短暂延迟以显示加载状态
+        });
+    },
+
+    generatePermutations(arr) {
+        if (arr.length <= 1) return [arr];
+        const result = [];
+        for (let i = 0; i < arr.length; i++) {
+            const current = arr[i];
+            const remaining = arr.slice(0, i).concat(arr.slice(i + 1));
+            const permutations = this.generatePermutations(remaining);
+            for (const perm of permutations) {
+                result.push([current, ...perm]);
+            }
+        }
+        return result;
+    },
+
+    countSinglePeakedVotesForDimension(dimension, validVotes) {
+        let count = 0;
+        for (const vote of validVotes) {
+            const result = this.checkVoterSinglePeakedness(vote.ranking, dimension);
+            if (result.isSinglePeaked) {
+                count++;
+            }
+        }
+        return count;
+    },
+
+    heuristicDimensionSearch(validVotes) {
+        // 启发式算法：基于投票相似性和频繁模式
+        let bestDimension = [...this.candidates];
+        let bestCount = this.countSinglePeakedVotesForDimension(bestDimension, validVotes);
+        
+        // 计算搜索次数：候选项数量越多，搜索次数越多，但设置上限
+        const maxSearchAttempts = Math.min(1000, Math.pow(this.candidates.length, 3));
+        
+        // 尝试多次随机搜索
+        for (let attempt = 0; attempt < maxSearchAttempts; attempt++) {
+            const testDimension = this.generateRandomOptimizedDimension(validVotes);
+            const testCount = this.countSinglePeakedVotesForDimension(testDimension, validVotes);
+            
+            if (testCount > bestCount) {
+                bestCount = testCount;
+                bestDimension = [...testDimension];
+            }
+        }
+        
+        return bestDimension;
+    },
+
+    generateRandomOptimizedDimension(validVotes) {
+        // 基于投票模式生成候选维度
+        const candidates = [...this.candidates];
+        
+        // 分析候选项之间的平均偏好关系
+        const pairwisePreferences = {};
+        candidates.forEach(c1 => {
+            candidates.forEach(c2 => {
+                if (c1 !== c2) {
+                    pairwisePreferences[`${c1}-${c2}`] = 0;
+                }
+            });
+        });
+        
+        validVotes.forEach(vote => {
+            for (let i = 0; i < vote.ranking.length; i++) {
+                for (let j = i + 1; j < vote.ranking.length; j++) {
+                    const preferred = vote.ranking[i];
+                    const lessPreferred = vote.ranking[j];
+                    if (candidates.includes(preferred) && candidates.includes(lessPreferred)) {
+                        pairwisePreferences[`${preferred}-${lessPreferred}`]++;
+                    }
+                }
+            }
+        });
+        
+        // 基于偏好强度排序，然后加入随机性
+        const shuffled = _.shuffle(candidates);
+        return shuffled;
+    },
+
+    showDimensionSearchResults(results) {
+        // 显示前5个最佳结果
+        const topResults = results
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+            
+        let resultText = "<strong>维度搜索结果 (前5名):</strong><br/>";
+        topResults.forEach((result, index) => {
+            resultText += `${index + 1}. ${result.dimension.join(' → ')} - ${result.count}票 (${result.percentage}%)<br/>`;
+        });
+        
+        this.$notify({
+            title: '维度搜索完成',
+            message: resultText,
+            type: 'info',
+            dangerouslyUseHTMLString: true,
+            duration: 8000
+        });
+    },
+
+    showSinglePeakednessHelp() {
+        this.$alert(`
+            <div style="text-align: center; line-height: 1.6;">
+                <h4>如何根据投票偏好矩阵手动寻找单峰性维度？</h4>
+                
+                <h5>🔍 <strong>步骤一：理解单峰性质</strong></h5>
+                <p>单峰偏好意味着每个投票人的偏好在某个一维政策空间上呈现单个"峰值"：</p>
+                <ul>
+                    <li>存在一个最偏好的候选项（峰值点）</li>
+                    <li>从峰值点向两边，偏好等级逐渐降低或保持不变</li>
+                    <li>不允许出现"山谷"（即不能有 A > C > B 当维度为 A-B-C 时）</li>
+                </ul>
+                
+                <h5>🔧 <strong>步骤二：分析方法</strong></h5>
+                <p><strong>方法1 - 候选项相似度分析：</strong></p>
+                <ul>
+                    <li>观察哪些候选项经常被投票人放在相邻位置</li>
+                    <li>相似的候选项在政策维度上应该相近</li>
+                    <li>例如：如果多数投票人认为 A > B > C 或 C > B > A，则维度可能是 A-B-C</li>
+                </ul>
+                
+                <p><strong>方法2 - 峰值点分析：</strong></p>
+                <ul>
+                    <li>统计每个候选项作为第一选择的频率</li>
+                    <li>如果维度正确，峰值点的分布应该呈现某种规律</li>
+                    <li>中间位置的候选项更可能成为峰值点</li>
+                </ul>
+                
+                <h5>📊 <strong>步骤三：验证方法</strong></h5>
+                <p><strong>手动验证步骤：</strong></p>
+                <ol>
+                    <li>选择一个候选维度排序（如 A > B > C > D）</li>
+                    <li>对每个投票人检查其偏好是否单峰：
+                        <ul>
+                            <li>找到该投票人的峰值点（最偏好的候选项）</li>
+                            <li>检查从峰值向左右两边偏好是否单调递减</li>
+                        </ul>
+                    </li>
+                    <li>统计符合单峰的投票人数量</li>
+                    <li>尝试不同的维度排序，找到单峰投票人数最多的</li>
+                </ol>
+                
+                <h5>💡 <strong>实用技巧</strong></h5>
+                <ul>
+                    <li><strong>从简单开始：</strong>如果候选项≤4个，可以尝试所有24种排列</li>
+                    <li><strong>观察模式：</strong>关注投票矩阵中的重复模式和相似性</li>
+                    <li><strong>逐步调整：</strong>从一个合理的猜测开始，根据结果逐步微调</li>
+                    <li><strong>使用工具：</strong>本系统提供的"自动寻找最佳单峰维度"功能可以帮助验证手动分析</li>
+                </ul>
+                
+                <h5>🎯 <strong>示例分析</strong></h5>
+                <p>假设有投票偏好：</p>
+                <ul>
+                    <li>投票人1: A > B > C > D</li>
+                    <li>投票人2: B > A > C > D</li>
+                    <li>投票人3: B > C > A > D</li>
+                    <li>投票人4: C > B > A > D</li>
+                </ul>
+                <p>分析：观察到B经常出现在前面位置，A和C相对位置变化，D总是最后。可能的维度是 <strong>A-B-C-D</strong> 或 <strong>D-C-B-A</strong>。</p>
+                
+                <p style="margin-top: 15px; color: #666; font-style: italic;">
+                    💡 提示：使用本系统的自定义维度输入功能来测试您的分析结果，观察单峰投票数的变化！
+                </p>
+            </div>
+        `, '单峰性维度寻找指南', {
+            confirmButtonText: '我明白了',
+            dangerouslyUseHTMLString: true,
+            customClass: 'single-peakedness-help-dialog'
+        });
+    },
+
+    openHelpDialog() {
+        this.showHelpDialog = true;
+    }
   }
 };
 </script>
@@ -1800,5 +2195,107 @@ export default {
   margin: 5px 0 0 0;
   font-style: italic;
   font-weight: 500;
+}
+
+/* 自定义维度相关样式 */
+.el-button-group {
+  display: flex;
+  width: 100%;
+}
+
+.el-button-group .el-button {
+  flex: 1;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.el-button-group .el-button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.el-button-group .el-button:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: none;
+}
+
+.el-button-group .el-button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+}
+
+/* 增强单峰性分析区域的视觉效果 */
+.el-form-item__label {
+  font-weight: 500;
+  color: #606266;
+}
+
+.el-input__inner {
+  transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.el-input__inner:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* 单峰性帮助对话框样式 */
+.single-peakedness-help-dialog {
+  max-width: 800px !important;
+}
+
+.single-peakedness-help-dialog .el-message-box__content {
+  max-height: 70vh;
+  overflow-y: auto;
+  text-align: left;
+  width: 100% !important;
+}
+
+.single-peakedness-help-dialog h4 {
+  color: #007bff;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 8px;
+}
+
+.single-peakedness-help-dialog h5 {
+  color: #495057;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.single-peakedness-help-dialog ul, .single-peakedness-help-dialog ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+.single-peakedness-help-dialog li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.single-peakedness-help-dialog p {
+  margin-bottom: 12px;
+  color: #495057;
+}
+
+/* 按钮加载状态优化 */
+.el-button.is-loading {
+  opacity: 0.8;
+}
+
+/* 使用指南按钮特殊样式 */
+.el-button[style*="linear-gradient"]:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6b4391 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4) !important;
+  transition: all 0.3s ease;
+}
+
+.el-button[style*="linear-gradient"]:active {
+  transform: translateY(0px);
+  transition: all 0.1s ease;
 }
 </style>
