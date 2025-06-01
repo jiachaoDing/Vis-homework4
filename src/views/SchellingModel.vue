@@ -6,7 +6,7 @@
       title="谢林模型介绍                 制作人贾书凡"
       width="60%"
       :show-close="true"
-      :close-on-click-modal="true"
+      :close-on-click-modal="false"
     >
       <div class="intro-content">
         <h3>什么是谢林模型？</h3>
