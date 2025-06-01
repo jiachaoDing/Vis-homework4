@@ -130,11 +130,11 @@
       </template>
       
       <el-row :gutter="20">
-        <!-- 左侧控制面板 -->
-        <el-col :span="4">
+        <!-- 左侧控制面板 - 从span="4"调整为span="7" -->
+        <el-col :span="7">
           <el-card shadow="never">
             <h3>参数设置</h3>
-            <el-form label-width="80px" size="small">
+            <el-form label-width="100px" size="small">
               <el-form-item label="网格大小">
                 <el-slider v-model="gridSize" :min="10" :max="50" show-input />
               </el-form-item>
@@ -165,8 +165,8 @@
           </el-card>
         </el-col>
         
-        <!-- 右侧网格可视化，增大宽度 -->
-        <el-col :span="20">
+        <!-- 右侧网格可视化 - 从span="20"调整为span="17" -->
+        <el-col :span="17">
           <el-tabs v-model="activeView" class="grid-tabs">
             <el-tab-pane label="网格视图" name="grid">
               <el-card shadow="never" class="grid-card">
@@ -253,7 +253,6 @@
     </el-card>
   </div>
 </template>
-
 
 <script>
 import * as d3 from 'd3'
@@ -2222,6 +2221,26 @@ updateGauge() {
   height: 12.5rem;
 }
 
+/* 主要布局容器 - 针对左右分栏布局 */
+.main-layout-container {
+  display: flex;
+  gap: 1.5rem;
+  height: calc(100vh - 8rem);
+}
+
+/* 左侧参数面板 - 扩大宽度 */
+.left-panel {
+  flex: 0 0 25rem; /* 固定宽度400px，确保参数完全显示 */
+  min-width: 25rem;
+  max-width: 28rem;
+}
+
+/* 右侧内容区域 */
+.right-panel {
+  flex: 1;
+  min-width: 0; /* 确保flex项目可以缩小 */
+}
+
 /* 添加动画效果 */
 .gauge-pointer {
   transition: transform 0.5s ease-out;
@@ -2235,18 +2254,53 @@ updateGauge() {
   transition: all 0.5s ease-out;
 }
 
-/* 响应式调整 */
-@media (max-width: 75rem) { /* 1200px */
+/* 超大屏幕优化 */
+@media (min-width: 100rem) { /* 1600px+ */
+  .schelling-model {
+    padding: 3rem;
+  }
+  
+  .left-panel {
+    flex: 0 0 30rem; /* 更大屏幕可以给更多空间 */
+    min-width: 30rem;
+    max-width: 35rem;
+  }
+  
+  .dashboard-card {
+    height: 24rem;
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 20rem;
+  }
+  
+  .large-chart-container {
+    height: 15rem;
+  }
+}
+
+/* 大屏幕 (1200px+) */
+@media (max-width: 75rem) and (min-width: 64rem) { /* 1200px - 1024px */
   .schelling-model {
     padding: 1.5rem;
   }
   
+  .main-layout-container {
+    gap: 1.25rem;
+  }
+  
+  .left-panel {
+    flex: 0 0 24rem; /* 1200px屏幕保持较大宽度 */
+    min-width: 24rem;
+    max-width: 26rem;
+  }
+  
   .dashboard-card {
-    height: 20rem; /* 统一高度 */
+    height: 20rem;
   }
   
   .gauge-container, .pie-container, .convergence-container {
-    height: 16rem; /* 统一高度 */
+    height: 16rem;
   }
   
   .large-chart-container {
@@ -2254,9 +2308,51 @@ updateGauge() {
   }
 }
 
-@media (max-width: 62rem) { /* 992px */
+/* 1K分辨率优化 (1024px) */
+@media (max-width: 64rem) and (min-width: 58rem) { /* 1024px - 928px */
+  .schelling-model {
+    padding: 1.25rem;
+  }
+  
+  .main-layout-container {
+    gap: 1rem;
+    height: calc(100vh - 7rem);
+  }
+  
+  .left-panel {
+    flex: 0 0 22rem; /* 1K屏幕确保参数面板足够宽 */
+    min-width: 22rem;
+    max-width: 24rem;
+  }
+  
+  .dashboard-card {
+    height: 19rem;
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 15rem;
+  }
+  
+  .large-chart-container {
+    height: 10.5rem;
+  }
+}
+
+/* 中等屏幕 (992px) */
+@media (max-width: 58rem) and (min-width: 48rem) { /* 928px - 768px */
   .schelling-model {
     padding: 1rem;
+  }
+  
+  .main-layout-container {
+    gap: 0.75rem;
+    height: calc(100vh - 6rem);
+  }
+  
+  .left-panel {
+    flex: 0 0 20rem; /* 中等屏幕适当减少但保持足够宽度 */
+    min-width: 20rem;
+    max-width: 22rem;
   }
   
   .main-card {
@@ -2264,11 +2360,11 @@ updateGauge() {
   }
   
   .dashboard-card {
-    height: 18rem; /* 统一高度 */
+    height: 18rem;
   }
   
   .gauge-container, .pie-container, .convergence-container {
-    height: 14rem; /* 统一高度 */
+    height: 14rem;
   }
   
   .large-chart-container {
@@ -2284,9 +2380,28 @@ updateGauge() {
   }
 }
 
-@media (max-width: 48rem) { /* 768px - Tablet */
+/* 平板竖屏 (768px) */
+@media (max-width: 48rem) { /* 768px */
   .schelling-model {
     padding: 0.75rem;
+  }
+  
+  /* 在平板上改为垂直布局 */
+  .main-layout-container {
+    flex-direction: column;
+    gap: 1rem;
+    height: auto;
+  }
+  
+  .left-panel {
+    flex: none;
+    width: 100%;
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .right-panel {
+    flex: none;
   }
   
   .header {
@@ -2307,11 +2422,11 @@ updateGauge() {
   }
   
   .dashboard-card {
-    height: 15rem; /* 统一高度 */
+    height: 15rem;
   }
   
   .gauge-container, .pie-container, .convergence-container {
-    height: 12rem; /* 统一高度 */
+    height: 12rem;
   }
   
   .large-chart-container {
@@ -2327,7 +2442,8 @@ updateGauge() {
   }
 }
 
-@media (max-width: 36rem) { /* 576px - Mobile */
+/* 手机横屏/小平板 (576px) */
+@media (max-width: 36rem) { /* 576px */
   .schelling-model {
     padding: 0.5rem;
   }
@@ -2336,12 +2452,16 @@ updateGauge() {
     margin-bottom: 1rem;
   }
   
+  .main-layout-container {
+    gap: 0.75rem;
+  }
+  
   .dashboard-card {
-    height: 13rem; /* 统一高度 */
+    height: 13rem;
   }
   
   .gauge-container, .pie-container, .convergence-container {
-    height: 10rem; /* 统一高度 */
+    height: 10rem;
   }
   
   .large-chart-container {
@@ -2366,17 +2486,22 @@ updateGauge() {
   }
 }
 
-@media (max-width: 24rem) { /* 384px - Small mobile */
+/* 小手机 (384px) */
+@media (max-width: 24rem) { /* 384px */
   .schelling-model {
     padding: 0.25rem;
   }
   
+  .main-layout-container {
+    gap: 0.5rem;
+  }
+  
   .dashboard-card {
-    height: 12rem; /* 统一高度 */
+    height: 12rem;
   }
   
   .gauge-container, .pie-container, .convergence-container {
-    height: 9rem; /* 统一高度 */
+    height: 9rem;
   }
   
   .large-chart-container {
@@ -2391,6 +2516,71 @@ updateGauge() {
     gap: 0.25rem;
     font-size: 0.875rem;
   }
+}
+
+/* 参数面板内部优化 */
+.parameter-panel {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.parameter-section {
+  margin-bottom: 1.5rem;
+}
+
+.parameter-section:last-child {
+  margin-bottom: 0;
+}
+
+.parameter-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e1e8ed;
+}
+
+.parameter-item {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.parameter-label {
+  font-weight: 500;
+  color: #34495e;
+  font-size: 0.95rem;
+}
+
+.parameter-description {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  line-height: 1.4;
+}
+
+/* 控制按钮组优化 */
+.control-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e1e8ed;
+}
+
+.control-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.control-row .el-button {
+  flex: 1;
 }
 
 /* 高亮动画 */
@@ -2427,22 +2617,22 @@ updateGauge() {
   line-height: 1.6;
 }
 
-/* 超大屏幕优化 */
-@media (min-width: 100rem) { /* 1600px+ */
-  .schelling-model {
-    padding: 3rem;
-  }
-  
-  .dashboard-card {
-    height: 24rem; /* 统一高度 */
-  }
-  
-  .gauge-container, .pie-container, .convergence-container {
-    height: 20rem; /* 统一高度 */
-  }
-  
-  .large-chart-container {
-    height: 15rem;
-  }
+/* 确保在1K分辨率下滚动条样式优化 */
+.parameter-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.parameter-panel::-webkit-scrollbar-track {
+  background: #f1f3f4;
+  border-radius: 3px;
+}
+
+.parameter-panel::-webkit-scrollbar-thumb {
+  background: #c1c8cd;
+  border-radius: 3px;
+}
+
+.parameter-panel::-webkit-scrollbar-thumb:hover {
+  background: #a8b2b9;
 }
 </style>
