@@ -795,54 +795,88 @@ export default {
       d3.selectAll(".grid-tooltip").remove()
     })
   
-  // 如果单元格足够大，添加文字标签
-  if (cellSize >= 16) {
-    this.cells.filter(d => d.value !== 0)
-      .append("text")
-      .attr("x", cellSize / 2)
-      .attr("y", cellSize / 2)
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .attr("font-size", `${cellSize / 2}px`)
-      .attr("fill", "#fff")
-      .text(d => d.value)
-  }
+  // 始终添加文字标签，使用动态字体大小
+  this.cells.filter(d => d.value !== 0)
+    .append("text")
+    .attr("x", cellSize / 2)
+    .attr("y", cellSize / 2)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("font-size", `${Math.max(cellSize / 3, 8)}px`) // 动态字体大小，最小8px
+    .attr("fill", "#fff")
+    .attr("font-weight", "bold") // 加粗文字，提高可读性
+    .text(d => d.value)
 },
 
     updateVisualization() {
-      if (!this.cells) return
-      
-      // 创建颜色方案，考虑满意度和移动状态
-      const getColor = (value, isSatisfied, isMoving) => {
-        if (value === 0) return "#f8f9fa"; // 空置单元格
-        
-        // 如果是正在移动的个体，添加闪烁效果
-        if (isMoving) {
-          return value === 1 ? "#ff9ff3" : "#00d2d3"; // 闪烁颜色
-        }
-        
-        if (value === 1) {
-          return isSatisfied ? "#ff7675" : "#fab1a0"; // 类型1：满意=深色，不满意=浅色
-        } else {
-          return isSatisfied ? "#74b9ff" : "#a0d2f3"; // 类型2：满意=深色，不满意=浅色
-        }
-      }
-      
-      // 更新单元格数据和颜色
-      this.cells
-        .data(this.grid.flat().map((d, i) => ({
-          value: d,
-          x: i % this.gridSize,
-          y: Math.floor(i / this.gridSize),
-          isSatisfied: d !== 0 ? this.isSatisfied(Math.floor(i / this.gridSize), i % this.gridSize) : true
-        })))
-        .select("rect")
-        .attr("fill", d => getColor(
-          d.value, 
-          d.isSatisfied, 
-          this.movingAgents.has(`${d.y}-${d.x}`)
-        ))
-    },
+  if (!this.cells) return
+  
+  // 获取当前的cellSize（需要重新计算或从renderGrid获取）
+  const container = this.$refs.gridContainer
+  if (!container) return
+  
+  const containerWidth = container.clientWidth
+  const containerHeight = container.clientHeight
+  const margin = 40
+  const availableWidth = containerWidth - margin * 2
+  const availableHeight = containerHeight - margin * 2
+  
+  const cellSize = Math.min(
+    Math.floor(availableWidth / this.gridSize),
+    Math.floor(availableHeight / this.gridSize)
+  ) * 0.8
+
+  // 创建颜色方案，考虑满意度和移动状态
+  const getColor = (value, isSatisfied, isMoving) => {
+    if (value === 0) return "#f8f9fa"; // 空置单元格
+    
+    // 如果是正在移动的个体，添加闪烁效果
+    if (isMoving) {
+      return value === 1 ? "#ff9ff3" : "#00d2d3"; // 闪烁颜色
+    }
+    
+    if (value === 1) {
+      return isSatisfied ? "#ff7675" : "#fab1a0"; // 类型1：满意=深色，不满意=浅色
+    } else {
+      return isSatisfied ? "#74b9ff" : "#a0d2f3"; // 类型2：满意=深色，不满意=浅色
+    }
+  }
+
+  // 更新单元格数据
+  const cellData = this.grid.flat().map((d, i) => ({
+    value: d,
+    x: i % this.gridSize,
+    y: Math.floor(i / this.gridSize),
+    isSatisfied: d !== 0 ? this.isSatisfied(Math.floor(i / this.gridSize), i % this.gridSize) : true
+  }))
+
+  // 更新单元格颜色
+  this.cells
+    .data(cellData)
+    .select("rect")
+    .attr("fill", d => getColor(
+      d.value, 
+      d.isSatisfied, 
+      this.movingAgents.has(`${d.y}-${d.x}`)
+    ))
+
+  // 移除所有现有的文字标签
+  this.cells.selectAll("text").remove()
+
+  // 重新添加文字标签
+  this.cells
+    .data(cellData)
+    .filter(d => d.value !== 0)
+    .append("text")
+    .attr("x", cellSize / 2)
+    .attr("y", cellSize / 2)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("font-size", `${Math.max(cellSize / 3, 8)}px`)
+    .attr("fill", "#fff")
+    .attr("font-weight", "bold")
+    .text(d => d.value)
+},
     
    renderHeatmap() {
   const container = this.$refs.heatmapContainer
