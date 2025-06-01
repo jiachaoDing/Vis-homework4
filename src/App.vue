@@ -78,17 +78,25 @@ export default {
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  overflow-x: hidden;   /* 禁止水平滚动 */
+  overflow-y: auto;     /* 允许垂直滚动 */
+}
+
 #app {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: #2c3e50;
   line-height: 1.6;
-  overflow-x: hidden;
+  min-height: 100vh;
 }
 
 .app-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-container::before {
@@ -380,12 +388,15 @@ body.dark-mode .sun-moon-icon::after {
 .app-main {
   flex: 1;
   padding: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 64px); /* 减去header高度 */
 }
 
 .content-wrapper {
   min-height: 100%;
   position: relative;
+  padding-bottom: 20px;
 }
 
 /* 页面切换动画 */
