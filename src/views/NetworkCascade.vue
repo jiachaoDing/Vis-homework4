@@ -368,6 +368,21 @@ import * as d3 from 'd3'
 import { ElMessage } from 'element-plus'
 import { Monitor, Share, QuestionFilled } from '@element-plus/icons-vue'
 
+const VIVID_COLORS = [
+  '#FF6B35', // 鲜艳橙色
+  '#FF1744', // 鲜艳红色  
+  '#7C4DFF', // 鲜艳紫色
+  '#00BCD4', // 鲜艳青色
+  '#4CAF50', // 鲜艳绿色
+  '#FF9800', // 鲜艳琥珀色
+  '#E91E63', // 鲜艳粉色
+  '#2196F3', // 鲜艳蓝色
+  '#9C27B0', // 鲜艳紫红色
+  '#00E676', // 鲜艳青绿色
+  '#FFD600', // 鲜艳黄色
+  '#FF5722'  // 鲜艳深橙色
+]
+
 export default {
   name: 'NetworkCascade',
   components: {
@@ -1055,7 +1070,7 @@ export default {
           if (visualMode.value === 'community') {
             const communityInfo = communityData.value.find(c => c.nodeId === d.id)
             if (communityInfo) {
-              return d3.schemeSet3[(communityInfo.community - 1) % 12]
+              return VIVID_COLORS[(communityInfo.community - 1) % VIVID_COLORS.length]
             }
             return '#ccc'
           } else {
@@ -1097,7 +1112,7 @@ export default {
             const sourceCommunity = communityData.value.find(c => c.nodeId === d.source.id)?.community
             const targetCommunity = communityData.value.find(c => c.nodeId === d.target.id)?.community
             if (sourceCommunity === targetCommunity) {
-              return d3.schemeSet3[(sourceCommunity - 1) % 12]
+              return VIVID_COLORS[(sourceCommunity - 1) % VIVID_COLORS.length]
             }
             return '#ddd'
           }
@@ -1144,7 +1159,7 @@ export default {
             .attr('y1', '15')
             .attr('x2', '35')
             .attr('y2', '15')
-            .attr('stroke', d3.schemeSet3[(community - 1) % 12])
+            .attr('stroke', VIVID_COLORS[(community - 1) % VIVID_COLORS.length])
             .attr('stroke-width', '2')
             .attr('stroke-opacity', '0.6')
 
@@ -1153,7 +1168,7 @@ export default {
             .attr('cx', '10')
             .attr('cy', '15')
             .attr('r', '6')
-            .attr('fill', d3.schemeSet3[(community - 1) % 12])
+            .attr('fill', VIVID_COLORS[(community - 1) % VIVID_COLORS.length])
             .style('stroke', 'white')
             .style('stroke-width', '2')
 
@@ -1161,7 +1176,7 @@ export default {
             .attr('cx', '30')
             .attr('cy', '15')
             .attr('r', '6')
-            .attr('fill', d3.schemeSet3[(community - 1) % 12])
+            .attr('fill', VIVID_COLORS[(community - 1) % VIVID_COLORS.length])
             .style('stroke', 'white')
             .style('stroke-width', '2')
 
@@ -1706,10 +1721,8 @@ export default {
 
 <style scoped>
 .network-cascade-container {
-  padding: 20px;
-  min-height: 100vh;
+  padding: 20px 20px 60px 20px;
   background-color: #f5f7fa;
-  overflow-y: auto;
 }
 
 .control-panel {
@@ -1717,13 +1730,15 @@ export default {
 }
 
 .main-content {
-  min-height: calc(100vh - 200px);
+  margin-bottom: 20px;
 }
 
 .visualization-card {
-  height: 600px;
+  height: auto;
+  min-height: 500px;
   display: flex;
   flex-direction: column;
+  margin-bottom: 20px;
 }
 
 .network-container {
@@ -1739,29 +1754,30 @@ export default {
   height: auto;
 }
 
-.stats-card {
-  height: 400px;
-  display: flex;
-  flex-direction: column;
-}
-
 .stats-card .el-card__body {
-  flex: 1;
   display: flex;
   flex-direction: column;
+  padding: 15px;
 }
 
 .teaching-card {
-  height: 180px;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+.teaching-card .el-card__body {
+  padding: 15px;
 }
 
 .chart-container {
   background: white;
   border-radius: 4px;
-  padding: 15px;
-  margin-bottom: 15px;
+  padding: 10px;
+  margin-bottom: 10px;
   border: 1px solid #ebeef5;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  height: 180px;
+  overflow: hidden;
 }
 
 .card-header {
@@ -1839,43 +1855,46 @@ export default {
 }
 
 .key-metrics {
-  padding: 15px;
+  padding: 10px;
   background-color: #f8f9fa;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  height: 100px;
+  margin-top: 10px;
+  height: auto;
+}
+
+.key-metrics .el-row {
+  margin: 0;
+}
+
+.key-metrics .el-col {
+  padding: 0 5px;
 }
 
 .metric-item {
   text-align: center;
-  padding: 10px;
+  padding: 8px 4px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
+  justify-content: center;
+  min-height: 60px;
 }
 
 .metric-title {
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
   white-space: nowrap;
-  width: 100%;
   text-align: center;
 }
 
 .metric-value {
-  font-size: 32px;
+  font-size: 20px;
   font-weight: bold;
   color: #409EFF;
   line-height: 1;
-  margin: auto 0;
   display: flex;
   align-items: baseline;
   justify-content: center;
-  height: 40px;
 }
 
 .metric-value .number {
@@ -1884,7 +1903,7 @@ export default {
 }
 
 .metric-value .unit {
-  font-size: 20px;
+  font-size: 14px;
   margin-left: 2px;
   line-height: 1;
 }
@@ -1892,28 +1911,30 @@ export default {
 .teaching-tools {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 15px;
+  gap: 15px;
+  padding: 10px;
 }
 
 .teaching-tools .el-button-group {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .teaching-tools .el-button {
   flex: 1;
-  max-width: 200px;
+  max-width: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  font-size: 12px;
+  padding: 8px 12px;
 }
 
 .teaching-progress {
-  margin-top: 20px;
-  padding: 15px;
+  margin-top: 15px;
+  padding: 10px;
   background-color: white;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -2146,11 +2167,11 @@ export default {
   }
   
   .network-container {
-    height: 400px;
+    height: 350px;
   }
   
   .visualization-card {
-    height: 500px;
+    min-height: 400px;
   }
 }
 
@@ -2172,33 +2193,48 @@ export default {
   }
   
   .network-container {
-    height: 300px;
+    height: 250px;
+  }
+  
+  .visualization-card {
+    min-height: 300px;
   }
   
   .chart-container {
-    padding: 10px;
+    padding: 8px;
+    height: 150px;
   }
   
   .key-metrics {
-    padding: 10px;
+    padding: 8px;
     height: auto;
   }
   
   .metric-item {
-    padding: 5px;
-    margin-bottom: 10px;
+    padding: 4px;
+    min-height: 50px;
   }
   
   .metric-value {
-    font-size: 24px;
+    font-size: 18px;
   }
   
   .metric-value .number {
-    font-size: 24px;
+    font-size: 18px;
   }
   
   .metric-value .unit {
-    font-size: 16px;
+    font-size: 12px;
+  }
+  
+  .teaching-tools {
+    padding: 8px;
+    gap: 10px;
+  }
+  
+  .teaching-tools .el-button {
+    font-size: 11px;
+    padding: 6px 8px;
   }
 }
 
