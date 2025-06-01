@@ -6,7 +6,7 @@
       title="谢林模型介绍                 制作人贾书凡"
       width="60%"
       :show-close="true"
-      :close-on-click-modal="false"
+      :close-on-click-modal="true"
     >
       <div class="intro-content">
         <h3>什么是谢林模型？</h3>
@@ -141,6 +141,12 @@
             </el-button>
             <el-button @click="exportData">
               <el-icon><Download /></el-icon> 导出数据
+            </el-button>
+            <el-button @click="saveCurrentState">
+              <el-icon><FolderOpened /></el-icon> 保存状态
+            </el-button>
+            <el-button @click="clearPersistedData" type="warning">
+              <el-icon><Delete /></el-icon> 清除缓存
             </el-button>
             <el-button @click="showIntroDialog = true">
               <el-icon><InfoFilled /></el-icon> 模型介绍
@@ -291,7 +297,7 @@
 
 <script>
 import * as d3 from 'd3'
-import { Refresh, VideoPlay, VideoPause, Download, InfoFilled, DataAnalysis } from '@element-plus/icons-vue'
+import { Refresh, VideoPlay, VideoPause, Download, InfoFilled, DataAnalysis, FolderOpened, Delete } from '@element-plus/icons-vue'
 
 export default {
   name: 'SchellingModel',
@@ -301,11 +307,13 @@ export default {
     VideoPause,
     Download,
     InfoFilled,
-    DataAnalysis
+    DataAnalysis,
+    FolderOpened,
+    Delete
   },
   data() {
     return {
-      showIntroDialog: true, // 设置为true以在页面加载时自动显示
+      showIntroDialog: false, // 设置为true以在页面加载时自动显示
       showDashboardDialog: false, // 添加仪表盘对话框控制变量
       gridSize: 20,
       threshold: 0.3,
@@ -343,13 +351,29 @@ export default {
     }
   },
   mounted() {
-    this.showIntroDialog = true; // 确保对话框显示
-    this.initializeGrid()
+    // this.showIntroDialog = true; // 确保对话框显示 - 已禁用自动显示
+    
+    // 尝试恢复之前保存的数据
+    this.restorePersistedData()
+    
+    // 如果没有恢复到数据，则初始化新的网格
+    if (!this.hasValidData()) {
+      this.initializeGrid()
+    }
+    
     // 添加窗口大小变化监听，以便重新渲染网格
     window.addEventListener('resize', this.handleResize)
+    
+    // 添加页面离开前的数据保存
+    window.addEventListener('beforeunload', this.persistData)
   },
   beforeUnmount() {
+    // 保存数据到本地存储
+    this.persistData()
+    
+    // 清理事件监听器
     window.removeEventListener('resize', this.handleResize)
+    window.removeEventListener('beforeunload', this.persistData)
   },
   watch: {
     activeView(newVal) {
@@ -469,6 +493,9 @@ export default {
         this.renderPieChart()
         this.renderConvergenceChart()
       }
+      
+      // 保存新的初始状态
+      this.persistData()
     },
     
     runSimulation() {
@@ -489,6 +516,9 @@ export default {
         clearInterval(this.intervalId)
         this.intervalId = null
       }
+      
+      // 模拟停止时保存当前状态
+      this.persistData()
     },
     
     simulateOneStep() {
@@ -598,6 +628,11 @@ export default {
         this.updateSatisfactionHeatmap()
       } else if (this.activeView === 'trajectories') {
         this.updateTrajectories()
+      }
+      
+      // 定期保存数据（每10次迭代保存一次，避免频繁保存影响性能）
+      if (this.iterations % 10 === 0) {
+        this.persistData()
       }
       
       return true
@@ -2525,6 +2560,164 @@ updateGauge() {
     updateConvergenceChart() {
       // 重新渲染收敛性图表
       this.renderConvergenceChart()
+    },
+    
+    // === 数据持久化相关方法 ===
+    
+    // 保存数据到本地存储
+    persistData() {
+      try {
+        const dataToSave = {
+          // 基本参数
+          gridSize: this.gridSize,
+          threshold: this.threshold,
+          emptyRate: this.emptyRate,
+          type1Ratio: this.type1Ratio,
+          simulationSpeed: this.simulationSpeed,
+          
+          // 网格状态
+          grid: this.grid,
+          iterations: this.iterations,
+          segregationIndex: this.segregationIndex,
+          unsatisfiedCount: this.unsatisfiedCount,
+          actualType1Ratio: this.actualType1Ratio,
+          actualType2Ratio: this.actualType2Ratio,
+          
+          // 历史数据
+          historyData: this.historyData,
+          convergenceData: this.convergenceData,
+          trajectories: this.trajectories,
+          satisfactionDistribution: this.satisfactionDistribution,
+          
+          // 其他状态
+          activeView: this.activeView,
+          heatmapType: this.heatmapType,
+          
+          // 保存时间戳
+          savedAt: new Date().toISOString(),
+          
+          // 运行状态（停止模拟状态）
+          isRunning: false
+        }
+        
+        localStorage.setItem('schellingModelData', JSON.stringify(dataToSave))
+        console.log('✅ 谢林模型数据已保存到本地存储')
+      } catch (error) {
+        console.warn('⚠️ 保存数据失败:', error)
+      }
+    },
+    
+    // 从本地存储恢复数据
+    restorePersistedData() {
+      try {
+        const savedData = localStorage.getItem('schellingModelData')
+        if (!savedData) {
+          console.log('📝 没有找到保存的数据，将创建新的模拟')
+          return false
+        }
+        
+        const data = JSON.parse(savedData)
+        
+        // 检查数据有效性
+        if (!data.grid || !Array.isArray(data.grid) || data.grid.length === 0) {
+          console.log('📝 保存的数据无效，将创建新的模拟')
+          return false
+        }
+        
+        // 检查数据是否过期（可选：7天后过期）
+        const savedTime = new Date(data.savedAt)
+        const now = new Date()
+        const daysDiff = (now - savedTime) / (1000 * 60 * 60 * 24)
+        
+        if (daysDiff > 7) {
+          console.log('📝 保存的数据已过期，将创建新的模拟')
+          localStorage.removeItem('schellingModelData')
+          return false
+        }
+        
+        // 恢复基本参数
+        this.gridSize = data.gridSize || 20
+        this.threshold = data.threshold || 0.3
+        this.emptyRate = data.emptyRate || 0.2
+        this.type1Ratio = data.type1Ratio || 0.5
+        this.simulationSpeed = data.simulationSpeed || 5
+        
+        // 恢复网格状态
+        this.grid = data.grid
+        this.iterations = data.iterations || 0
+        this.segregationIndex = data.segregationIndex || 0
+        this.unsatisfiedCount = data.unsatisfiedCount || 0
+        this.actualType1Ratio = data.actualType1Ratio || 0
+        this.actualType2Ratio = data.actualType2Ratio || 0
+        
+        // 恢复历史数据
+        this.historyData = data.historyData || {
+          iterations: [],
+          segregationIndex: [],
+          unsatisfiedCount: []
+        }
+        this.convergenceData = data.convergenceData || []
+        this.trajectories = data.trajectories || []
+        this.satisfactionDistribution = data.satisfactionDistribution || {
+          satisfied: { type1: 0, type2: 0 },
+          unsatisfied: { type1: 0, type2: 0 }
+        }
+        
+        // 恢复界面状态
+        this.activeView = data.activeView || 'grid'
+        this.heatmapType = data.heatmapType || 'type1'
+        
+        // 确保模拟停止状态
+        this.isRunning = false
+        
+        // 重新计算统计数据（确保数据一致性）
+        this.calculateStatistics()
+        
+        console.log(`✅ 成功恢复谢林模型数据 (保存于: ${data.savedAt})`)
+        console.log(`📊 恢复的数据: ${this.iterations}次迭代, 隔离指数: ${this.segregationIndex}%`)
+        
+        // 等待DOM更新后渲染可视化
+        this.$nextTick(() => {
+          this.renderGrid()
+          if (this.activeView === 'heatmap') {
+            this.renderHeatmap()
+          } else if (this.activeView === 'satisfaction') {
+            this.renderSatisfactionHeatmap()
+          }
+        })
+        
+        return true
+      } catch (error) {
+        console.warn('⚠️ 恢复数据失败:', error)
+        localStorage.removeItem('schellingModelData')
+        return false
+      }
+    },
+    
+    // 检查是否有有效数据
+    hasValidData() {
+      return this.grid && 
+             Array.isArray(this.grid) && 
+             this.grid.length > 0 && 
+             this.grid[0] && 
+             Array.isArray(this.grid[0])
+    },
+    
+    // 清除保存的数据
+    clearPersistedData() {
+      try {
+        localStorage.removeItem('schellingModelData')
+        console.log('🗑️ 已清除保存的数据')
+        this.$message.success('已清除保存的数据')
+      } catch (error) {
+        console.warn('⚠️ 清除数据失败:', error)
+      }
+    },
+    
+    // 手动保存当前状态
+    saveCurrentState() {
+      this.persistData()
+      this.$message.success('当前状态已保存')
     }
   }
 }
