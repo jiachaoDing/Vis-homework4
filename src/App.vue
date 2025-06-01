@@ -48,18 +48,7 @@
           </transition>
         </div>
       </el-main>
-      
-      <el-footer class="app-footer">
-        <div class="footer-content">
-          <div class="footer-left">
-            <p>&copy; 2025 众智科学知识可视化平台. All rights reserved.</p>
-          </div>
-          <div class="footer-right">
-            <span class="footer-link">关于我们</span>
-            <span class="footer-link">联系方式</span>
-          </div>
-        </div>
-      </el-footer>
+    
     </el-container>
   </div>
 </template>
