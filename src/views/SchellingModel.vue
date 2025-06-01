@@ -3,7 +3,7 @@
     <!-- 添加介绍弹窗 -->
     <el-dialog
       v-model="showIntroDialog"
-      title="谢林模型介绍"
+      title="谢林模型介绍                 制作人贾书凡"
       width="60%"
       :show-close="true"
       :close-on-click-modal="true"
