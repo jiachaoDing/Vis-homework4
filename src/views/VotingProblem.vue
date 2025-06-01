@@ -145,12 +145,11 @@
 
             <el-tab-pane label="🔄 悖论与循环图" name="paradox">
                <el-alert title="图表解读：揭示偏好网络与潜在冲突" type="info" :closable="false" style="margin-bottom:15px;">
-                 <p>此图通过有向图可视化候选项之间的胜负关系。箭头从胜者指向败者（基于两两比较的多数票）。</p>
+                 <p>此图通过有向图可视化候选项之间的胜负关系。<strong>箭头从胜者指向败者</strong>（基于两两比较的多数票），<strong>节点越大表示该候选项整体实力越强</strong>（基于Copeland得分）。</p>
                  <ul>
                    <li><strong>无循环 (通常绿色箭头):</strong> 如果图中不存在有向循环，通常意味着存在孔多塞胜者（一个能击败所有其他候选项的个体）。</li>
                    <li><strong>存在循环 (通常红色箭头，循环路径高亮):</strong> 如果检测到孔多塞悖论，图中会存在一个或多个偏好循环 (例如 A > B > C > A)。这表明群体偏好不具有传递性，没有单一候选项能得到普遍认可。高亮的循环路径展示了悖论的具体构成。</li>
                  </ul>
-                 节点大小可能与候选项的某种得分（如Copeland得分）相关，表示其整体实力。
                </el-alert>
               <el-card shadow="never">
                 <template #header><span>胜负关系与循环检测图</span></template>
@@ -396,7 +395,7 @@ export default {
     // Auto-generate on load if in random mode, or prepare for manual
     if (this.activeVoteInputMode === 'random') {
         this.generateVotes(); // Generate initial structure but don't analyze yet
-        this.generateAndAnalyze(); // Then analyze
+        this.analyzeAll(false); // 初次加载时不显示弹窗
     } else {
         this.parseManualCandidates(); // Ensure candidates are ready for manual input display
         this.adjustManualVoteInputs();
@@ -413,7 +412,7 @@ export default {
         }
         this.activeVoteInputMode = 'random'; // Ensure mode is correct
         this.generateVotes();
-        this.analyzeAll();
+        this.analyzeAll(true); // 显示分析完成弹窗
     },
     generateVotes() {
       // This method is primarily for random generation
@@ -520,12 +519,22 @@ export default {
         });
         
         if (!allInputsValid) {
-           this.$message.warning("部分手动输入的投票存在格式问题或与候选项不符，已被标记为无效。请检查投票偏好矩阵。");
+           this.$message({
+             message: '⚠️ 部分手动输入的投票存在格式问题，已标记为无效票',
+             type: 'warning',
+             duration: 3500,
+             showClose: true
+           });
         }
 
 
         if (this.votes.length === 0) {
-            this.$message.error("未能成功解析任何有效投票，请检查手动输入。");
+            this.$message({
+              message: '❌ 未能解析任何有效投票，请检查输入格式',
+              type: 'error',
+              duration: 4000,
+              showClose: true
+            });
             this.analysisDone = false;
             this.clearVisualizations();
             this.updateVoteData(); // Update table to show parsing issues
@@ -533,7 +542,7 @@ export default {
         }
         
         this.condorcetWinnerDemoResult = '';
-        this.analyzeAll();
+        this.analyzeAll(true); // 用户手动分析时显示弹窗
     },
 
 
@@ -551,7 +560,7 @@ export default {
       });
     },
 
-    analyzeAll() {
+    analyzeAll(showSuccessDialog = true) {
       if (this.votes.length === 0) {
         this.$message.warn('请先生成投票数据或完成手动输入。');
         this.clearPreviousAnalysis();
@@ -583,10 +592,24 @@ export default {
       this.updateVoteData(); // Update table data
       this.renderAllVisualizations();
       this.analysisDone = true;
-      if(this.validVotes > 0 && this.candidates.length > 0) {
-        this.$message.success('投票分析完成!');
-      } else if (this.votes.length > 0) {
-        this.$message.info('投票分析完成，但无有效选票或候选项。');
+      
+      // 只有在showSuccessDialog为true时才显示分析完成弹窗
+      if(showSuccessDialog) {
+        if(this.validVotes > 0 && this.candidates.length > 0) {
+          this.$message({
+            message: `🎉 投票分析完成！共分析 ${this.validVotes} 张有效选票，${this.candidates.length} 个候选项`,
+            type: 'success',
+            duration: 3000,
+            showClose: true
+          });
+        } else if (this.votes.length > 0) {
+          this.$message({
+            message: `⚠️ 投票分析完成，但无有效选票或候选项`,
+            type: 'warning',
+            duration: 3000,
+            showClose: true
+          });
+        }
       }
       this.condorcetWinnerDemoResult = ''; // Reset demo result on new analysis
     },
@@ -925,10 +948,20 @@ export default {
       const numRemoved = this.invalidVotes;
       this.votes = this.votes.filter(vote => vote.valid);
       if (numRemoved > 0) {
-        this.$message.info(`${numRemoved} 张无效票已被移除。将重新分析...`);
-        this.analyzeAll(); 
+        this.$message({
+          message: `🗑️ 已移除 ${numRemoved} 张无效票，正在重新分析...`,
+          type: 'info',
+          duration: 3000,
+          showClose: true
+        });
+        this.analyzeAll(true); // 用户移除无效票后重新分析时显示弹窗
       } else {
-        this.$message.info(`没有无效票可移除。`);
+        this.$message({
+          message: `ℹ️ 没有无效票可移除`,
+          type: 'info',
+          duration: 2500,
+          showClose: true
+        });
       }
     },
 
@@ -992,7 +1025,12 @@ export default {
             return;
         }
         this.assumedDimensionOrder = _.shuffle(this.assumedDimensionOrder);
-        this.$message.success(`假设维度已更新为: ${this.assumedDimensionOrder.join(' > ')}. 正在重新分析单峰性...`);
+        this.$message({
+          message: `🔄 假设维度已更新：${this.assumedDimensionOrder.join(' → ')}`,
+          type: 'success',
+          duration: 3500,
+          showClose: true
+        });
         
         // Only re-analyze single-peakedness and its dependent charts
         this.analyzeSinglePeakedness();
@@ -1017,10 +1055,20 @@ export default {
         });
 
         if (removedCount > 0) {
-            this.$message.info(`${removedCount} 张不符合单峰性的投票已被标记为无效。正在重新全面分析...`);
-            this.analyzeAll(); // Re-run full analysis
+            this.$message({
+              message: `📊 已移除 ${removedCount} 张不符合单峰性的投票，重新分析中...`,
+              type: 'info',
+              duration: 3500,
+              showClose: true
+            });
+            this.analyzeAll(true); // 用户移除不符合单峰性投票后重新分析时显示弹窗
         } else {
-            this.$message.info("没有可移除的不符合单峰性的投票，或所有不符合单峰性的投票已为无效。");
+            this.$message({
+              message: `ℹ️ 没有可移除的非单峰投票`,
+              type: 'info',
+              duration: 2500,
+              showClose: true
+            });
         }
     },
 
@@ -1221,11 +1269,21 @@ export default {
           .attr("fill", d => (d === "end-arrow-cycle" ? "#e63946" : (this.hasCondorcetParadox ? "#fca311" : "#2a9d8f"))) 
           .attr("d", "M0,-5L10,0L0,5"); 
 
+      // 先计算节点大小相关的变量
+      const nodeRadiusBase = 18; 
+      const minScore = d3.min(nodes, d => d.score) || 0;
+      const maxScore = d3.max(nodes, d => d.score) || 0;
+      const scoreRange = maxScore - minScore || 1;
+
       const simulation = d3.forceSimulation(nodes)
         .force("link", d3.forceLink(links).id(d => d.id).distance(this.candidateCount > 5 ? 150 : 120)) 
         .force("charge", d3.forceManyBody().strength(-300 - this.candidateCount * 40)) 
         .force("center", d3.forceCenter(0,0))
-        .force("collision", d3.forceCollide().radius(d => ( (Math.abs(d.score) / (d3.max(nodes, n => Math.abs(n.score)) || 1)) * 15) + 25 ));
+        .force("collision", d3.forceCollide().radius(d => {
+          // 使用与节点半径相同的计算逻辑
+          const normalizedScore = scoreRange > 0 ? (d.score - minScore) / scoreRange : 0.5;
+          return nodeRadiusBase + normalizedScore * 12 + 3; // 节点半径 + 3px间距
+        }));
 
       const link = svg.append("g")
         .attr("stroke-opacity", 0.7)
@@ -1251,9 +1309,6 @@ export default {
             return "url(#end-arrow-normal)";
         });
       
-      const nodeRadiusBase = 15; 
-      const maxScoreAbs = d3.max(nodes, d => Math.abs(d.score)) || 1;
-
       const node = svg.append("g")
         .selectAll("g") 
         .data(nodes)
@@ -1261,7 +1316,11 @@ export default {
         .call(this.d3Drag(simulation)); 
 
       node.append("circle")
-        .attr("r", d => nodeRadiusBase + (Math.abs(d.score) / maxScoreAbs) * 10 ) 
+        .attr("r", d => {
+          // 胜者（高分）节点更大，败者（低分）节点更小
+          const normalizedScore = scoreRange > 0 ? (d.score - minScore) / scoreRange : 0.5;
+          return nodeRadiusBase + normalizedScore * 12; // 基础18px + 最多12px额外大小
+        })
         .attr("fill", d => {
             if (this.highlightedCycle && this.highlightedCycle.nodes.includes(d.id)) {
                 return "#e63946"; 
@@ -1280,7 +1339,7 @@ export default {
         .style("fill", d => (this.highlightedCycle && this.highlightedCycle.nodes.includes(d.id)) ? "#fff" : "#ffffff") 
         .style("pointer-events", "none"); 
 
-      node.append("title").text(d => `${d.name}\nCopeland Score: ${d.score}`); 
+      node.append("title").text(d => `候选项: ${d.name}\nCopeland得分: ${d.score}\n(胜场数 - 败场数)\n节点大小反映整体实力`); 
 
       simulation.on("tick", () => {
         link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
@@ -1693,5 +1752,43 @@ export default {
 .d3-chart svg title {
   font-family: sans-serif;
   font-size: 12px; 
+}
+
+/* 美化消息提示样式 */
+.el-message {
+  min-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 15px 20px;
+}
+
+.el-message.el-message--success {
+  background-color: #f0f9ff;
+  border: 1px solid #3b82f6;
+  color: #1e40af;
+}
+
+.el-message.el-message--info {
+  background-color: #fefefe;
+  border: 1px solid #6b7280;
+  color: #374151;
+}
+
+.el-message.el-message--warning {
+  background-color: #fff7ed;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.el-message.el-message--error {
+  background-color: #fef2f2;
+  border: 1px solid #ef4444;
+  color: #dc2626;
+}
+
+.el-message__content {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 </style>
