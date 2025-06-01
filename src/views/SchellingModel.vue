@@ -48,7 +48,8 @@
     >
       <div class="dashboard-content">
         <el-row :gutter="20">
-          <el-col :span="8">
+          <!-- 隔离指数 - 缩小宽度 -->
+          <el-col :span="6">
             <el-card shadow="never" class="dashboard-card">
               <template #header>
                 <div class="dashboard-header">
@@ -58,7 +59,8 @@
               <div ref="gaugeContainer" class="gauge-container"></div>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <!-- 满意度分布 - 缩小宽度 -->
+          <el-col :span="6">
             <el-card shadow="never" class="dashboard-card">
               <template #header>
                 <div class="dashboard-header">
@@ -68,7 +70,8 @@
               <div ref="pieContainer" class="pie-container"></div>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <!-- 收敛性分析 - 增加宽度 -->
+          <el-col :span="12">
             <el-card shadow="never" class="dashboard-card">
               <template #header>
                 <div class="dashboard-header">
@@ -244,26 +247,13 @@
                 </div>
               </el-card>
             </el-tab-pane>
-            <!-- 添加移动轨迹图视图 -->
-            <el-tab-pane label="移动轨迹" name="trajectories">
-              <el-card shadow="never" class="grid-card">
-                <template #header>
-                  <div class="grid-header">
-                    <h3>个体移动轨迹</h3>
-                    <el-button size="small" @click="clearTrajectories">清除轨迹</el-button>
-                  </div>
-                </template>
-                <div class="grid-flex-container">
-                  <div ref="trajectoriesContainer" class="grid-container"></div>
-                </div>
-              </el-card>
-            </el-tab-pane>
           </el-tabs>
         </el-col>
       </el-row>
     </el-card>
   </div>
 </template>
+
 
 <script>
 import * as d3 from 'd3'
@@ -1275,27 +1265,77 @@ updateHeatmap() {
         .attr("d", unsatisfiedLine)
     },
     // 更新收敛性数据
-    updateConvergenceData() {
-      // 每10次迭代计算一次收敛率
-      if (this.iterations % 10 === 0 && this.iterations > 0) {
+    // 修正版本的收敛性数据更新方法
+updateConvergenceData() {
+    // 每10次迭代计算一次收敛率
+    if (this.iterations % 10 === 0 && this.iterations > 0) {
         // 计算最近10次迭代的平均变化率
         const recentIndices = this.historyData.segregationIndex.slice(-11) // 获取最近11个值
         let changeSum = 0
         
         for (let i = 1; i < recentIndices.length; i++) {
-          changeSum += Math.abs(recentIndices[i] - recentIndices[i-1])
+            changeSum += Math.abs(recentIndices[i] - recentIndices[i-1])
         }
         
         const avgChange = changeSum / 10
-        const maxSegregation = 100 // 最大隔离指数
-        const convergenceRate = Math.max(0, 1 - (avgChange / maxSegregation) * 100)
+        
+        // 方案1: 基于变化率的指数衰减模型
+        // 变化率越小，收敛率越高
+        const convergenceRate = Math.min(100, 100 * Math.exp(-avgChange * 2))
+        
+        // 方案2: 基于相对变化的线性模型
+        // const maxExpectedChange = 5 // 预期的最大变化率
+        // const convergenceRate = Math.max(0, Math.min(100, 100 * (1 - avgChange / maxExpectedChange)))
+        
+        // 方案3: 基于历史趋势的收敛判断
+        // if (this.convergenceData.length >= 3) {
+        //     const recent3 = this.convergenceData.slice(-3).map(d => d.rate)
+        //     const trend = (recent3[2] - recent3[0]) / 2 // 趋势斜率
+        //     const stability = recent3.reduce((sum, val) => sum + Math.abs(val - recent3[1]), 0) / 3
+        //     const convergenceRate = Math.max(0, Math.min(100, 
+        //         100 * Math.exp(-avgChange * 2) * (1 - Math.abs(trend) * 0.1) * (1 - stability * 0.05)
+        //     ))
+        // }
         
         this.convergenceData.push({
-          iteration: this.iterations,
-          rate: convergenceRate
+            iteration: this.iterations,
+            rate: convergenceRate,
+            avgChange: avgChange // 添加调试信息
         })
-      }
-    },
+        
+        // 调试输出
+        console.log(`迭代 ${this.iterations}: 平均变化=${avgChange.toFixed(4)}, 收敛率=${convergenceRate.toFixed(2)}%`)
+    }
+},
+
+// 额外的收敛性分析方法
+analyzeConvergence() {
+    if (this.historyData.segregationIndex.length < 20) return null
+    
+    const recent20 = this.historyData.segregationIndex.slice(-20)
+    
+    // 计算方差（稳定性指标）
+    const mean = recent20.reduce((sum, val) => sum + val, 0) / recent20.length
+    const variance = recent20.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / recent20.length
+    const stability = Math.max(0, 100 * Math.exp(-variance))
+    
+    // 计算趋势（是否仍在变化）
+    const firstHalf = recent20.slice(0, 10).reduce((sum, val) => sum + val, 0) / 10
+    const secondHalf = recent20.slice(10).reduce((sum, val) => sum + val, 0) / 10
+    const trendStrength = Math.abs(secondHalf - firstHalf)
+    const trendConvergence = Math.max(0, 100 * Math.exp(-trendStrength * 0.5))
+    
+    // 综合收敛评分
+    const overallConvergence = (stability + trendConvergence) / 2
+    
+    return {
+        stability: stability,
+        trendConvergence: trendConvergence,
+        overall: overallConvergence,
+        variance: variance,
+        trendStrength: trendStrength
+    }
+},
     
     exportData() {
       // 准备导出的数据
@@ -1609,378 +1649,243 @@ updateHeatmap() {
     },
     
     // 渲染移动轨迹图
-    renderTrajectories() {
-  const container = this.$refs.trajectoriesContainer
+    
+    
+    // 渲染仪表盘
+    renderGauge() {
+  const container = this.$refs.gaugeContainer
   if (!container) return
   
   d3.select(container).selectAll("*").remove()
   
-  // 获取容器尺寸
   const containerWidth = container.clientWidth
-  const containerHeight = container.clientHeight
+  const containerHeight = container.clientHeight // 使用容器实际高度
   
-  // 增加边距，使网格更小
-  const margin = 40 // 从10改为40
-  const additionalMargin = 40 // 额外边距
-  const downShift = 0// 整体下移的距离
-  
-  const availableWidth = containerWidth - margin * 2 - additionalMargin * 2
-  const availableHeight = containerHeight - margin * 2 - additionalMargin * 2
-  
-  // 计算单元格大小，添加缩放因子0.8使其更小
-  const cellSize = Math.min(
-    Math.floor(availableWidth / this.gridSize),
-    Math.floor(availableHeight / this.gridSize)
-  ) * 0.8
-  
-  const width = cellSize * this.gridSize
-  const height = cellSize * this.gridSize
-  
-  // 居中放置网格，并下移
-  const offsetX = (containerWidth - width) / 2
-  const offsetY = (containerHeight - height) / 2 + downShift
+  const margin = { top: 20, right: 20, bottom: 40, left: 20 } // 增加边距
+  const width = containerWidth - margin.left - margin.right
+  const height = containerHeight - margin.top - margin.bottom
   
   const svg = d3.select(container)
     .append("svg")
     .attr("width", containerWidth)
     .attr("height", containerHeight)
     .append("g")
-    .attr("transform", `translate(${offsetX}, ${offsetY})`)
+    .attr("transform", `translate(${margin.left + width / 2}, ${margin.top + height * 0.45})`) // 调整垂直位置
   
-  // 添加网格背景
-  svg.append("rect")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("fill", "#f0f0f0")
-    .attr("stroke", "#ccc")
-    .attr("stroke-width", 2)
+  const radius = Math.min(width, height * 0.8) / 2 // 减小半径以适应容器
   
-  // 添加网格线
-  for (let i = 0; i <= this.gridSize; i++) {
-    // 垂直线
-    svg.append("line")
-      .attr("x1", i * cellSize)
-      .attr("y1", 0)
-      .attr("x2", i * cellSize)
-      .attr("y2", height)
-      .attr("stroke", "#ddd")
-      .attr("stroke-width", 1)
-    
-    // 水平线
-    svg.append("line")
-      .attr("x1", 0)
-      .attr("y1", i * cellSize)
-      .attr("x2", width)
-      .attr("y2", i * cellSize)
-      .attr("stroke", "#ddd")
-      .attr("stroke-width", 1)
-  }
+  // 创建仪表盘比例尺
+  const scale = d3.scaleLinear()
+    .domain([0, 100])
+    .range([-Math.PI / 2, Math.PI / 2])
   
-  // 绘制当前网格状态
-  for (let i = 0; i < this.gridSize; i++) {
-    for (let j = 0; j < this.gridSize; j++) {
-      if (this.grid[i][j] !== 0) {
-        const color = this.grid[i][j] === 1 ? "#ff7675" : "#74b9ff"
-        svg.append("rect")
-          .attr("x", j * cellSize)
-          .attr("y", i * cellSize)
-          .attr("width", cellSize)
-          .attr("height", cellSize)
-          .attr("fill", color)
-          .attr("fill-opacity", 0.3)
-          .attr("rx", Math.min(3, cellSize / 5))
-          .attr("ry", Math.min(3, cellSize / 5))
-      }
-    }
-  }
+  // 创建弧形生成器
+  const arc = d3.arc()
+    .innerRadius(radius - Math.max(20, radius * 0.3)) // 动态计算内半径
+    .outerRadius(radius)
+    .startAngle(-Math.PI / 2)
   
-  // 按类型分组轨迹
-  const type1Trajectories = this.trajectories.filter(t => t.type === 1)
-  const type2Trajectories = this.trajectories.filter(t => t.type === 2)
+  // 添加背景弧形
+  const backgroundArc = svg.append("path")
+    .datum({ endAngle: Math.PI / 2 })
+    .attr("class", "gauge-background")
+    .attr("d", arc)
+    .attr("fill", "#ecf0f1")
   
-  // 创建曲线生成器
-  const linkGenerator = d3.linkHorizontal()
-    .source(d => [d.from.y * cellSize + cellSize / 2, d.from.x * cellSize + cellSize / 2])
-    .target(d => [d.to.y * cellSize + cellSize / 2, d.to.x * cellSize + cellSize / 2])
-  
-  // 绘制类型1轨迹
-  svg.selectAll(".trajectory-type1")
-    .data(type1Trajectories)
-    .enter()
-    .append("path")
-    .attr("class", "trajectory-type1")
-    .attr("d", linkGenerator)
-    .attr("fill", "none")
-    .attr("stroke", "#ff7675")
-    .attr("stroke-width", 2)
-    .attr("stroke-opacity", d => Math.max(0.1, 1 - (this.iterations - d.iteration) / 50))
-    .attr("marker-end", "url(#arrowhead-type1)")
-  
-  // 绘制类型2轨迹
-  svg.selectAll(".trajectory-type2")
-    .data(type2Trajectories)
-    .enter()
-    .append("path")
-    .attr("class", "trajectory-type2")
-    .attr("d", linkGenerator)
-    .attr("fill", "none")
-    .attr("stroke", "#74b9ff")
-    .attr("stroke-width", 2)
-    .attr("stroke-opacity", d => Math.max(0.1, 1 - (this.iterations - d.iteration) / 50))
-    .attr("marker-end", "url(#arrowhead-type2)")
-  
-  // 添加箭头标记
+  // 创建渐变
   const defs = svg.append("defs")
+  const gradient = defs.append("linearGradient")
+    .attr("id", "gauge-gradient")
+    .attr("x1", "0%")
+    .attr("y1", "0%")
+    .attr("x2", "100%")
+    .attr("y2", "0%")
   
-  // 类型1箭头
-  defs.append("marker")
-    .attr("id", "arrowhead-type1")
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 8)
-    .attr("refY", 0)
-    .attr("markerWidth", 6)
-    .attr("markerHeight", 6)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", "#ff7675")
+  gradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "#2ecc71") // 绿色代表低隔离
   
-  // 类型2箭头
-  defs.append("marker")
-    .attr("id", "arrowhead-type2")
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 8)
-    .attr("refY", 0)
-    .attr("markerWidth", 6)
-    .attr("markerHeight", 6)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", "#74b9ff")
+  gradient.append("stop")
+    .attr("offset", "30%")
+    .attr("stop-color", "#f1c40f") // 黄色代表中等隔离
   
-  // 添加图例
-  const legend = svg.append("g")
-    .attr("class", "legend")
-    .attr("transform", `translate(20, 20)`)
+  gradient.append("stop")
+    .attr("offset", "70%")
+    .attr("stop-color", "#e67e22") // 橙色代表高隔离
   
-  // 类型1图例
-  legend.append("line")
+  gradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "#e74c3c") // 红色代表极高隔离
+  
+  // 添加前景弧形
+  const foregroundArc = svg.append("path")
+    .datum({ endAngle: scale(parseFloat(this.segregationIndex)) })
+    .attr("class", "gauge-foreground")
+    .attr("d", arc)
+    .attr("fill", "url(#gauge-gradient)")
+  
+  // 添加刻度
+  const ticks = [0, 20, 40, 60, 80, 100]
+  const innerRadius = radius - Math.max(20, radius * 0.3)
+  
+  svg.selectAll(".gauge-tick")
+    .data(ticks)
+    .enter()
+    .append("line")
+    .attr("class", "gauge-tick")
+    .attr("x1", d => innerRadius * Math.cos(scale(d)))
+    .attr("y1", d => innerRadius * Math.sin(scale(d)))
+    .attr("x2", d => (innerRadius - 10) * Math.cos(scale(d))) // 向内延伸
+    .attr("y2", d => (innerRadius - 10) * Math.sin(scale(d)))
+    .attr("stroke", "#7f8c8d")
+    .attr("stroke-width", 2)
+  
+  // 动态计算文字大小
+  const fontSize = Math.max(10, Math.min(14, radius / 8))
+  const tickTextRadius = radius + Math.max(12, radius * 0.15)
+  
+  svg.selectAll(".gauge-tick-text")
+    .data(ticks)
+    .enter()
+    .append("text")
+    .attr("class", "gauge-tick-text")
+    .attr("x", d => tickTextRadius * Math.cos(scale(d)))
+    .attr("y", d => tickTextRadius * Math.sin(scale(d)) + fontSize/3) // 调整垂直对齐
+    .attr("text-anchor", "middle")
+    .attr("font-size", `${fontSize}px`)
+    .attr("fill", "#34495e")
+    .text(d => d)
+  
+  // 添加指针
+  const pointerLength = radius - Math.max(5, radius * 0.1)
+  const pointer = svg.append("line")
+    .attr("class", "gauge-pointer")
     .attr("x1", 0)
     .attr("y1", 0)
-    .attr("x2", 20)
-    .attr("y2", 0)
-    .attr("stroke", "#ff7675")
-    .attr("stroke-width", 2)
-    .attr("marker-end", "url(#arrowhead-type1)")
+    .attr("x2", 0)
+    .attr("y2", -pointerLength)
+    .attr("stroke", "#e74c3c")
+    .attr("stroke-width", Math.max(2, radius / 30))
+    .attr("stroke-linecap", "round")
+    .attr("transform", `rotate(${scale(parseFloat(this.segregationIndex)) * 180 / Math.PI})`)
   
-  legend.append("text")
-    .attr("x", 30)
-    .attr("y", 0)
-    .attr("alignment-baseline", "middle")
-    .attr("font-size", "12px")
-    .text("类型1移动")
+  // 添加指针圆心
+  const centerRadius = Math.max(3, radius / 15)
+  svg.append("circle")
+    .attr("class", "gauge-center")
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("r", centerRadius)
+    .attr("fill", "#e74c3c")
   
-  // 类型2图例
-  legend.append("line")
-    .attr("x1", 0)
-    .attr("y1", 20)
-    .attr("x2", 20)
-    .attr("y2", 20)
-    .attr("stroke", "#74b9ff")
-    .attr("stroke-width", 2)
-    .attr("marker-end", "url(#arrowhead-type2)")
+  // 动态计算主值文字大小和位置
+  const valueFontSize = Math.max(16, Math.min(32, radius / 4))
+  const valueY = Math.max(30, radius / 3)
   
-  legend.append("text")
-    .attr("x", 30)
-    .attr("y", 20)
-    .attr("alignment-baseline", "middle")
-    .attr("font-size", "12px")
-    .text("类型2移动")
+  // 添加当前值文本
+  svg.append("text")
+    .attr("class", "gauge-value")
+    .attr("x", 0)
+    .attr("y", valueY)
+    .attr("text-anchor", "middle")
+    .attr("font-size", `${valueFontSize}px`)
+    .attr("font-weight", "bold")
+    .attr("fill", "#2c3e50")
+    .text(`${this.segregationIndex}%`)
+  
+  // 动态计算标题文字大小和位置
+  const titleFontSize = Math.max(12, Math.min(18, radius / 6))
+  const titleY = -Math.max(10, radius / 6)
+  
+  // 添加标题
+  svg.append("text")
+    .attr("class", "gauge-title")
+    .attr("x", 0)
+    .attr("y", titleY)
+    .attr("text-anchor", "middle")
+    .attr("font-size", `${titleFontSize}px`)
+    .attr("font-weight", "600")
+    .attr("fill", "#34495e")
+    .text("隔离指数")
+  
+  // 添加单位说明
+  const unitFontSize = Math.max(10, Math.min(14, radius / 8))
+  svg.append("text")
+    .attr("class", "gauge-unit")
+    .attr("x", 0)
+    .attr("y", valueY + valueFontSize + 5)
+    .attr("text-anchor", "middle")
+    .attr("font-size", `${unitFontSize}px`)
+    .attr("fill", "#7f8c8d")
+    .text("Segregation Index")
 },
-    
-    // 更新轨迹图
-    updateTrajectories() {
-      if (this.activeView === 'trajectories') {
-        this.renderTrajectories()
+
+// 更新仪表盘
+updateGauge() {
+  const container = this.$refs.gaugeContainer
+  if (!container) return
+  
+  const svg = d3.select(container).select("svg").select("g")
+  if (svg.empty()) {
+    // 如果SVG不存在，重新渲染
+    this.renderGauge()
+    return
+  }
+  
+  const containerWidth = container.clientWidth
+  const containerHeight = container.clientHeight
+  
+  const margin = { top: 20, right: 20, bottom: 40, left: 20 }
+  const width = containerWidth - margin.left - margin.right
+  const height = containerHeight - margin.top - margin.bottom
+  
+  const radius = Math.min(width, height * 0.8) / 2
+  
+  // 创建仪表盘比例尺
+  const scale = d3.scaleLinear()
+    .domain([0, 100])
+    .range([-Math.PI / 2, Math.PI / 2])
+  
+  // 更新弧形
+  const arc = d3.arc()
+    .innerRadius(radius - Math.max(20, radius * 0.3))
+    .outerRadius(radius)
+    .startAngle(-Math.PI / 2)
+  
+  // 更新前景弧形 - 添加过渡动画
+  svg.select(".gauge-foreground")
+    .datum({ endAngle: scale(parseFloat(this.segregationIndex)) })
+    .transition()
+    .duration(500)
+    .attrTween("d", function(d) {
+      const interpolate = d3.interpolate(this._current || { endAngle: -Math.PI / 2 }, d)
+      this._current = interpolate(0)
+      return function(t) {
+        return arc(interpolate(t))
       }
-    },
-    
-    // 清除轨迹
-    clearTrajectories() {
-      this.trajectories = []
-      if (this.activeView === 'trajectories') {
-        this.renderTrajectories()
+    })
+  
+  // 更新指针 - 添加过渡动画
+  svg.select(".gauge-pointer")
+    .transition()
+    .duration(500)
+    .attr("transform", `rotate(${scale(parseFloat(this.segregationIndex)) * 180 / Math.PI})`)
+  
+  // 更新当前值文本 - 添加数字动画
+  const valueElement = svg.select(".gauge-value")
+  const currentValue = parseFloat(valueElement.text()) || 0
+  const newValue = parseFloat(this.segregationIndex)
+  
+  valueElement
+    .transition()
+    .duration(500)
+    .tween("text", function() {
+      const interpolate = d3.interpolate(currentValue, newValue)
+      return function(t) {
+        this.textContent = `${interpolate(t).toFixed(1)}%`
       }
-    },
-    
-    // 渲染仪表盘
-    renderGauge() {
-      const container = this.$refs.gaugeContainer
-      if (!container) return
-      
-      d3.select(container).selectAll("*").remove()
-      
-      const containerWidth = container.clientWidth
-      const containerHeight = 180
-      
-      const margin = { top: 10, right: 10, bottom: 10, left: 10 }
-      const width = containerWidth - margin.left - margin.right
-      const height = containerHeight - margin.top - margin.bottom
-      
-      const svg = d3.select(container)
-        .append("svg")
-        .attr("width", containerWidth)
-        .attr("height", containerHeight)
-        .append("g")
-        .attr("transform", `translate(${margin.left + width / 2}, ${margin.top + height / 2})`)
-      
-      const radius = Math.min(width, height) / 2
-      
-      // 创建仪表盘比例尺
-      const scale = d3.scaleLinear()
-        .domain([0, 100])
-        .range([-Math.PI / 2, Math.PI / 2])
-      
-      // 创建弧形生成器
-      const arc = d3.arc()
-        .innerRadius(radius - 40)
-        .outerRadius(radius)
-        .startAngle(-Math.PI / 2)
-      
-      // 添加背景弧形
-      const backgroundArc = svg.append("path")
-        .datum({ endAngle: Math.PI / 2 })
-        .attr("class", "gauge-background")
-        .attr("d", arc)
-        .attr("fill", "#ecf0f1")
-      
-      // 创建渐变
-      const defs = svg.append("defs")
-      const gradient = defs.append("linearGradient")
-        .attr("id", "gauge-gradient")
-        .attr("x1", "0%")
-        .attr("y1", "0%")
-        .attr("x2", "100%")
-        .attr("y2", "0%")
-      
-      gradient.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", "#f1c40f")
-      
-      gradient.append("stop")
-        .attr("offset", "50%")
-        .attr("stop-color", "#e67e22")
-      
-      gradient.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", "#e74c3c")
-      
-      // 添加前景弧形
-      const foregroundArc = svg.append("path")
-        .datum({ endAngle: scale(parseFloat(this.segregationIndex)) })
-        .attr("class", "gauge-foreground")
-        .attr("d", arc)
-        .attr("fill", "url(#gauge-gradient)")
-      
-      // 添加刻度
-      const ticks = [0, 20, 40, 60, 80, 100]
-      
-      svg.selectAll(".gauge-tick")
-        .data(ticks)
-        .enter()
-        .append("line")
-        .attr("class", "gauge-tick")
-        .attr("x1", d => (radius - 40) * Math.cos(scale(d)))
-        .attr("y1", d => (radius - 40) * Math.sin(scale(d)))
-        .attr("x2", d => radius * Math.cos(scale(d)))
-        .attr("y2", d => radius * Math.sin(scale(d)))
-        .attr("stroke", "#bdc3c7")
-        .attr("stroke-width", 2)
-      
-      svg.selectAll(".gauge-tick-text")
-        .data(ticks)
-        .enter()
-        .append("text")
-        .attr("class", "gauge-tick-text")
-        .attr("x", d => (radius + 15) * Math.cos(scale(d)))
-        .attr("y", d => (radius + 15) * Math.sin(scale(d)))
-        .attr("text-anchor", "middle")
-        .attr("font-size", "12px")
-        .text(d => d)
-      
-      // 添加指针
-      const pointer = svg.append("line")
-        .attr("class", "gauge-pointer")
-        .attr("x1", 0)
-        .attr("y1", 0)
-        .attr("x2", 0)
-        .attr("y2", -radius + 10)
-        .attr("stroke", "#e74c3c")
-        .attr("stroke-width", 3)
-        .attr("transform", `rotate(${scale(parseFloat(this.segregationIndex)) * 180 / Math.PI})`)
-      
-      // 添加指针圆心
-      svg.append("circle")
-        .attr("class", "gauge-center")
-        .attr("cx", 0)
-        .attr("cy", 0)
-        .attr("r", 5)
-        .attr("fill", "#e74c3c")
-      
-      // 添加当前值文本
-      svg.append("text")
-        .attr("class", "gauge-value")
-        .attr("x", 0)
-        .attr("y", radius / 2)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "24px")
-        .attr("font-weight", "bold")
-        .text(`${this.segregationIndex}%`)
-      
-      // 添加标题
-      svg.append("text")
-        .attr("class", "gauge-title")
-        .attr("x", 0)
-        .attr("y", -radius / 4)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "14px")
-        .text("隔离指数")
-    },
-    
-    // 更新仪表盘
-    updateGauge() {
-      const container = this.$refs.gaugeContainer
-      if (!container) return
-      
-      const svg = d3.select(container).select("svg").select("g")
-      
-      const radius = Math.min(container.clientWidth, 180) / 2 - 20
-      
-      // 创建仪表盘比例尺
-      const scale = d3.scaleLinear()
-        .domain([0, 100])
-        .range([-Math.PI / 2, Math.PI / 2])
-      
-      // 更新弧形
-      const arc = d3.arc()
-        .innerRadius(radius - 40)
-        .outerRadius(radius)
-        .startAngle(-Math.PI / 2)
-      
-      // 更新前景弧形
-      svg.select(".gauge-foreground")
-        .datum({ endAngle: scale(parseFloat(this.segregationIndex)) })
-        .attr("d", arc)
-      
-      // 更新指针
-      svg.select(".gauge-pointer")
-        .attr("transform", `rotate(${scale(parseFloat(this.segregationIndex)) * 180 / Math.PI})`)
-      
-      // 更新当前值文本
-      svg.select(".gauge-value")
-        .text(`${this.segregationIndex}%`)
-    },
-    
+    })
+},
     // 渲染饼图
     renderPieChart() {
       const container = this.$refs.pieContainer
@@ -2202,7 +2107,7 @@ updateHeatmap() {
 </script>
 <style scoped>
 .schelling-model {
-  padding: 20px;
+  padding: 2rem;
   background-color: #f5f7fa;
   min-height: 100vh;
   display: flex;
@@ -2210,7 +2115,7 @@ updateHeatmap() {
 }
 
 .main-card {
-  margin-bottom: 20px;
+  margin-bottom: 2rem;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2228,7 +2133,7 @@ updateHeatmap() {
 }
 
 .header p {
-  margin: 5px 0 0;
+  margin: 0.5rem 0 0;
   color: #7f8c8d;
 }
 
@@ -2241,7 +2146,7 @@ updateHeatmap() {
 }
 
 .grid-flex-container {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 12.5rem);
   width: 100%;
   display: flex;
   justify-content: center;
@@ -2249,7 +2154,7 @@ updateHeatmap() {
 }
 
 .grid-card {
-  height: calc(100vh - 150px);
+  height: calc(100vh - 9.375rem);
 }
 
 .grid-header {
@@ -2264,33 +2169,33 @@ updateHeatmap() {
 
 .color-legend {
   display: flex;
-  gap: 10px;
+  gap: 1rem;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 0.5rem;
 }
 
 .color-box {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.125rem;
 }
 
 .grid-tabs :deep(.el-tabs__content) {
   overflow: visible;
-  height: calc(100vh - 200px);
+  height: calc(100vh - 12.5rem);
 }
 
 /* 仪表盘对话框样式 */
 .dashboard-dialog :deep(.el-dialog__body) {
-  padding: 20px;
+  padding: 2rem;
 }
 
 .dashboard-card {
-  height: 240px;
+  height: 22rem; /* 统一所有仪表卡片高度 */
 }
 
 .dashboard-header {
@@ -2301,12 +2206,12 @@ updateHeatmap() {
 
 .dashboard-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .gauge-container, .pie-container, .convergence-container {
   width: 100%;
-  height: 180px;
+  height: 18rem; /* 统一所有仪表容器高度 */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -2314,7 +2219,7 @@ updateHeatmap() {
 
 .large-chart-container {
   width: 100%;
-  height: 200px;
+  height: 12.5rem;
 }
 
 /* 添加动画效果 */
@@ -2331,15 +2236,160 @@ updateHeatmap() {
 }
 
 /* 响应式调整 */
-@media (max-width: 1200px) {
+@media (max-width: 75rem) { /* 1200px */
+  .schelling-model {
+    padding: 1.5rem;
+  }
+  
   .dashboard-card {
-    height: 220px;
+    height: 20rem; /* 统一高度 */
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 16rem; /* 统一高度 */
+  }
+  
+  .large-chart-container {
+    height: 11rem;
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: 62rem) { /* 992px */
+  .schelling-model {
+    padding: 1rem;
+  }
+  
+  .main-card {
+    margin-bottom: 1.5rem;
+  }
+  
   .dashboard-card {
-    height: 200px;
+    height: 18rem; /* 统一高度 */
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 14rem; /* 统一高度 */
+  }
+  
+  .large-chart-container {
+    height: 10rem;
+  }
+  
+  .color-legend {
+    gap: 0.75rem;
+  }
+  
+  .legend-item {
+    gap: 0.375rem;
+  }
+}
+
+@media (max-width: 48rem) { /* 768px - Tablet */
+  .schelling-model {
+    padding: 0.75rem;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .grid-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .color-legend {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .dashboard-card {
+    height: 15rem; /* 统一高度 */
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 12rem; /* 统一高度 */
+  }
+  
+  .large-chart-container {
+    height: 9rem;
+  }
+  
+  .grid-flex-container {
+    height: calc(100vh - 15rem);
+  }
+  
+  .grid-card {
+    height: calc(100vh - 12rem);
+  }
+}
+
+@media (max-width: 36rem) { /* 576px - Mobile */
+  .schelling-model {
+    padding: 0.5rem;
+  }
+  
+  .main-card {
+    margin-bottom: 1rem;
+  }
+  
+  .dashboard-card {
+    height: 13rem; /* 统一高度 */
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 10rem; /* 统一高度 */
+  }
+  
+  .large-chart-container {
+    height: 8rem;
+  }
+  
+  .dashboard-header h3 {
+    font-size: 0.875rem;
+  }
+  
+  .color-box {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+  
+  .grid-flex-container {
+    height: calc(100vh - 18rem);
+  }
+  
+  .grid-card {
+    height: calc(100vh - 15rem);
+  }
+}
+
+@media (max-width: 24rem) { /* 384px - Small mobile */
+  .schelling-model {
+    padding: 0.25rem;
+  }
+  
+  .dashboard-card {
+    height: 12rem; /* 统一高度 */
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 9rem; /* 统一高度 */
+  }
+  
+  .large-chart-container {
+    height: 7rem;
+  }
+  
+  .color-legend {
+    gap: 0.25rem;
+  }
+  
+  .legend-item {
+    gap: 0.25rem;
+    font-size: 0.875rem;
   }
 }
 
@@ -2352,14 +2402,14 @@ updateHeatmap() {
 
 .cell:hover rect {
   stroke: #34495e;
-  stroke-width: 2px;
+  stroke-width: 0.125rem;
 }
 
 /* 介绍弹窗样式 */
 .intro-content h3 {
   color: #2c3e50;
-  margin-top: 20px;
-  margin-bottom: 10px;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
 }
 
 .intro-content p {
@@ -2368,12 +2418,31 @@ updateHeatmap() {
 }
 
 .intro-content ul {
-  padding-left: 20px;
+  padding-left: 1.25rem;
 }
 
 .intro-content li {
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
   color: #34495e;
   line-height: 1.6;
+}
+
+/* 超大屏幕优化 */
+@media (min-width: 100rem) { /* 1600px+ */
+  .schelling-model {
+    padding: 3rem;
+  }
+  
+  .dashboard-card {
+    height: 24rem; /* 统一高度 */
+  }
+  
+  .gauge-container, .pie-container, .convergence-container {
+    height: 20rem; /* 统一高度 */
+  }
+  
+  .large-chart-container {
+    height: 15rem;
+  }
 }
 </style>
