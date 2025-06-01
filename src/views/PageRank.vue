@@ -37,11 +37,11 @@
                   <el-option label="链式网络" value="chain" />
                 </el-select>
               </el-form-item>
-              <el-form-item>
+              <el-form-item >
                 <el-button type="primary" @click="generateGraph">生成图</el-button>
                 <el-button type="success" @click="runPageRank" :disabled="isRunning">运行PageRank</el-button>
               </el-form-item>
-              <el-form-item>
+              <el-form-item >
                 <el-button @click="initStepMode" :disabled="isRunning || isStepMode">开始单步</el-button>
                 <el-button @click="stepByStep" :disabled="!canStep">执行一步</el-button>
                 <el-button @click="resetAlgorithm" :disabled="isRunning">重置算法</el-button>
@@ -948,13 +948,29 @@ export default {
 
       d3.select(container).selectAll("*").remove()
 
-      const width = 600
-      const height = 400
+      // 根据节点数量动态调整画布尺寸
+      const baseWidth = 600
+      const baseHeight = 400
+      const scaleFactor = Math.max(1, Math.sqrt(this.nodeCount / 20))
+      const width = Math.min(baseWidth * scaleFactor, 1000) // 最大不超过1000px
+      const height = Math.min(baseHeight * scaleFactor, 700)  // 最大不超过700px
 
       const svg = d3.select(container)
           .append("svg")
           .attr("width", width)
           .attr("height", height)
+          .attr("viewBox", `0 0 ${width} ${height}`)
+          .style("border", "1px solid #ddd")
+
+      // 添加缩放和平移功能
+      const g = svg.append("g")
+      const zoom = d3.zoom()
+          .scaleExtent([0.1, 4])
+          .on("zoom", (event) => {
+            g.attr("transform", event.transform)
+          })
+      
+      svg.call(zoom)
 
       // 添加箭头标记
       svg.append("defs").append("marker")
@@ -969,67 +985,103 @@ export default {
           .attr("d", "M0,-5L10,0L0,5")
           .attr("fill", "#999")
 
-      // 确保所有节点都有初始位置
+      // 优化初始位置布局
       this.nodes.forEach((node, i) => {
         if (!node.x || !node.y) {
-          // 使用圆形布局作为初始位置
-          const angle = (i / this.nodeCount) * 2 * Math.PI
-          const radius = Math.min(width, height) / 3
+          // 使用更分散的初始布局
+          const spiralRadius = Math.min(width, height) / 3
+          const angle = (i / this.nodeCount) * 2 * Math.PI * 3 // 3圈螺旋
+          const radius = spiralRadius * (i / this.nodeCount)
           node.x = width / 2 + radius * Math.cos(angle)
           node.y = height / 2 + radius * Math.sin(angle)
         }
       })
 
-      this.simulation = d3.forceSimulation(this.nodes)
-          .force("link", d3.forceLink(this.links).id(d => d.id).distance(60).strength(0.5))
-          .force("charge", d3.forceManyBody().strength(-150))
-          .force("center", d3.forceCenter(width / 2, height / 2))
-          .force("collision", d3.forceCollide().radius(20))
+      // 根据节点数量动态调整力导向参数
+      const linkDistance = Math.max(80, 150 - this.nodeCount * 2) // 动态链接距离
+      const chargeStrength = Math.min(-200, -50 - this.nodeCount * 5) // 动态排斥力
+      const collisionRadius = Math.max(25, 40 - this.nodeCount * 0.5) // 动态碰撞半径
 
-      const link = svg.append("g")
+      this.simulation = d3.forceSimulation(this.nodes)
+          .force("link", d3.forceLink(this.links)
+              .id(d => d.id)
+              .distance(linkDistance)
+              .strength(0.3)
+          )
+          .force("charge", d3.forceManyBody()
+              .strength(chargeStrength)
+              .distanceMax(width / 2)
+          )
+          .force("center", d3.forceCenter(width / 2, height / 2))
+          .force("collision", d3.forceCollide()
+              .radius(collisionRadius)
+              .strength(0.8)
+          )
+          // 添加边界约束力
+          .force("boundary", () => {
+            this.nodes.forEach(node => {
+              const radius = collisionRadius
+              node.x = Math.max(radius, Math.min(width - radius, node.x))
+              node.y = Math.max(radius, Math.min(height - radius, node.y))
+            })
+          })
+
+      const link = g.append("g")
           .selectAll("line")
           .data(this.links)
           .enter().append("line")
           .attr("stroke", "#999")
           .attr("stroke-opacity", 0.6)
-          .attr("stroke-width", 2)
+          .attr("stroke-width", 1.5)
           .attr("marker-end", "url(#arrowhead)")
 
-      const node = svg.append("g")
+      const node = g.append("g")
           .selectAll("circle")
           .data(this.nodes)
           .enter().append("circle")
-          .attr("r", 10)
+          .attr("r", 8) // 稍微减小基础半径
           .attr("fill", "#69b3a2")
           .attr("stroke", "#333")
           .attr("stroke-width", 1)
+          .style("cursor", "pointer")
           .call(d3.drag()
               .on("start", this.dragstarted)
               .on("drag", this.dragged)
               .on("end", this.dragended))
 
       // 添加节点标签
-      const labels = svg.append("g")
+      const labels = g.append("g")
           .selectAll("text")
           .data(this.nodes)
           .enter().append("text")
           .text(d => d.id)
-          .attr("font-size", 12)
+          .attr("font-size", 10)
           .attr("text-anchor", "middle")
-          .attr("dy", 4)
+          .attr("dy", 3)
           .attr("fill", "white")
           .attr("font-weight", "bold")
           .style("pointer-events", "none")
+          .style("user-select", "none")
+
+      // 添加双击重置位置功能
+      svg.on("dblclick", () => {
+        svg.transition().duration(750).call(
+            zoom.transform,
+            d3.zoomIdentity
+        )
+      })
 
       this.simulation.on("tick", () => {
-        // 限制节点在画布范围内
+        // 更平滑的边界约束
         node
             .attr("cx", d => {
-              d.x = Math.max(15, Math.min(width - 15, d.x))
+              const radius = collisionRadius
+              d.x = Math.max(radius, Math.min(width - radius, d.x))
               return d.x
             })
             .attr("cy", d => {
-              d.y = Math.max(15, Math.min(height - 15, d.y))
+              const radius = collisionRadius
+              d.y = Math.max(radius, Math.min(height - radius, d.y))
               return d.y
             })
 
@@ -1059,8 +1111,14 @@ export default {
       const minPR = Math.min(...pageRanks)
       const range = maxPR - minPR || 1
 
+      // 动态调整节点大小范围，避免过大导致重叠
+      const minRadius = Math.max(6, 12 - this.nodeCount * 0.1)
+      const maxRadius = Math.max(minRadius + 5, 20 - this.nodeCount * 0.2)
+
       this.nodeSelection
-          .attr("r", d => 8 + (d.pagerank - minPR) / range * 15)
+          .transition()
+          .duration(200)
+          .attr("r", d => minRadius + (d.pagerank - minPR) / range * (maxRadius - minRadius))
           .attr("fill", d => {
             const normalized = (d.pagerank - minPR) / range
             if (normalized > 0.7) return "#ff4444"
@@ -1100,104 +1158,11 @@ export default {
 }
 </script>
 
-<style scoped>
-.pagerank-demo {
-  padding: 20px;
-}
-
-.network-container {
-  width: 100%;
-  height: 400px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.chart-container {
-  width: 100%;
-  height: 350px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+<style>
+/* 不使用scoped，直接覆盖全局样式 */
+.pagerank-demo .el-form-item__content {
   display: flex;
-  align-items: center;
   justify-content: center;
-}
-
-.el-card {
-  margin-bottom: 20px;
-}
-
-.legend {
-  font-size: 14px;
-  color: #666;
-}
-
-/* 图表样式 */
-.grid line {
-  stroke: lightgrey;
-  stroke-opacity: 0.7;
-  shape-rendering: crispEdges;
-}
-
-.grid path {
-  stroke-width: 0;
-}
-
-.bar:hover {
-  fill: #4CAF50;
-}
-
-/* 帮助对话框样式 */
-.help-content {
-  line-height: 1.6;
-  color: #333;
-}
-
-.help-content h3 {
-  color: #409EFF;
-  border-bottom: 2px solid #409EFF;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-}
-
-.help-content h4 {
-  color: #606266;
-  margin-top: 25px;
-  margin-bottom: 15px;
-  font-weight: 600;
-}
-
-.help-content ul, .help-content ol {
-  margin: 15px 0;
-  padding-left: 20px;
-}
-
-.help-content li {
-  margin: 8px 0;
-}
-
-.help-content p {
-  margin: 10px 0;
-  text-align: justify;
-}
-
-.formula {
-  background-color: #f5f7fa;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  padding: 15px;
-  margin: 15px 0;
-  font-family: 'Courier New', monospace;
-}
-
-.formula p {
-  margin: 5px 0;
-}
-
-.formula strong {
-  color: #E6A23C;
-}
-
-.dialog-footer {
-  text-align: center;
+  gap: 10px;
 }
 </style>
