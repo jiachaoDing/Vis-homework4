@@ -409,7 +409,7 @@ export default {
 .comparison-matrix {
   width: 100%;
   height: 300px;
-  border: 1px solid #ddd;
+  border: 1px solid #dd1;
   border-radius: 4px;
   display: flex;
   justify-content: center;
