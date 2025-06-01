@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import Home from '../views/Home.vue'
 import FriendshipParadox from '../views/FriendshipParadox.vue'
 import SchellingModel from '../views/SchellingModel.vue'
 import PageRank from '../views/PageRank.vue'
@@ -8,7 +9,8 @@ import VotingProblem from '../views/VotingProblem.vue'
 const routes = [
   {
     path: '/',
-    redirect: '/friendship-paradox'
+    name: 'Home',
+    component: Home
   },
   {
     path: '/friendship-paradox',
