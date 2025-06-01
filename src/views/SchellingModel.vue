@@ -497,6 +497,33 @@ export default {
       this.calculateStatistics()
       this.updateVisualization()
       
+      // 检查是否所有个体都满意了（在统计数据更新后检查）
+      if (this.unsatisfiedCount === 0) {
+        // 停止自动模拟
+        if (this.isSimulating) {
+          this.stopSimulation()
+        }
+        
+        // 延迟弹出对话框，确保界面更新完成
+        setTimeout(() => {
+          this.$confirm(
+            `模拟已完成！所有个体都已满意。\n\n最终统计数据：\n- 总迭代次数：${this.iterations}\n- 隔离指数：${this.segregationIndex}%\n- `,
+            '模拟结束',
+            {
+              confirmButtonText: '查看详细报告',
+              cancelButtonText: '关闭',
+              type: 'success',
+              showCancelButton: true
+            }
+          ).then(() => {
+            // 用户点击查看详细报告，打开仪表盘
+            this.showDashboardDialog = true
+          }).catch(() => {
+            // 用户点击关闭，不做任何操作
+          })
+        }, 100)
+      }
+      
       // 记录历史数据
       this.historyData.iterations.push(this.iterations)
       this.historyData.segregationIndex.push(parseFloat(this.segregationIndex))
@@ -557,6 +584,7 @@ export default {
       if (totalNeighbors === 0) return true
       return (sameTypeCount / totalNeighbors) >= this.threshold
     },
+    
     
     calculateStatistics() {
       let unsatisfied = 0
@@ -651,7 +679,7 @@ export default {
   
   // 居中放置网格
   const offsetX = (containerWidth - width) / 2
-  const offsetY = (containerHeight - height) / 2
+  const offsetY = (containerHeight - height) / 2-10
   
   const svg = d3.select(container)
     .append("svg")
