@@ -166,7 +166,7 @@
         </el-col>
         
         <!-- 右侧网格可视化 - 从span="20"调整为span="17" -->
-        <el-col :span="17">
+        <el-col :span="15">
           <el-tabs v-model="activeView" class="grid-tabs">
             <el-tab-pane label="网格视图" name="grid">
               <el-card shadow="never" class="grid-card">
@@ -300,7 +300,8 @@ export default {
       satisfactionDistribution: { // 满意度分布数据
         satisfied: { type1: 0, type2: 0 },
         unsatisfied: { type1: 0, type2: 0 }
-      }
+      },
+      currentCellSize: 0 // 存储当前单元格尺寸
     }
   },
   mounted() {
@@ -659,32 +660,46 @@ export default {
   
   d3.select(container).selectAll("*").remove()
   
-  // 获取容器尺寸
-  const containerWidth = container.clientWidth
-  const containerHeight = container.clientHeight
+  // 获取容器尺寸并添加安全检查
+  const containerWidth = Math.min(container.clientWidth, 1000) // 增大最大宽度限制
+  const containerHeight = Math.min(container.clientHeight, 700) // 增大最大高度限制
   
-  // 增加边距，使网格更小
-  const margin = 40 // 增加边距
+  // 确保容器有有效尺寸
+  if (containerWidth < 100 || containerHeight < 100) {
+    console.warn('容器尺寸过小，跳过渲染')
+    return
+  }
+  
+  // 减少边距，确保网格能完整显示
+  const margin = 20 // 减少边距释放更多空间
   const availableWidth = containerWidth - margin * 2
   const availableHeight = containerHeight - margin * 2
   
-  // 计算单元格大小，确保网格能完整显示，并添加缩放因子0.8使其更小
+  // 计算单元格大小，确保网格能完整显示，使用更大的缩放因子
   const cellSize = Math.min(
     Math.floor(availableWidth / this.gridSize),
-    Math.floor(availableHeight / this.gridSize)
-  ) * 0.8 // 添加缩放因子
+    Math.floor(availableHeight / this.gridSize),
+    35 // 增大最大单元格尺寸
+  ) * 0.95 // 使用更大的缩放因子
+  
+  // 确保单元格尺寸有效
+  if (cellSize < 3) {
+    console.warn('计算出的单元格尺寸过小，跳过渲染')
+    return
+  }
   
   const width = cellSize * this.gridSize
   const height = cellSize * this.gridSize
   
-  // 居中放置网格
-  const offsetX = (containerWidth - width) / 2
-  const offsetY = (containerHeight - height) / 2-10
+  // 居中放置网格，确保不超出容器边界
+  const offsetX = Math.max(margin, (containerWidth - width) / 2)
+  const offsetY = Math.max(margin, (containerHeight - height) / 2)
   
   const svg = d3.select(container)
     .append("svg")
     .attr("width", containerWidth)
     .attr("height", containerHeight)
+    .style("border", "1px solid #ddd") // 添加边框便于调试
     .append("g")
     .attr("transform", `translate(${offsetX}, ${offsetY})`)
   
@@ -694,7 +709,7 @@ export default {
     .attr("height", height)
     .attr("fill", "#f0f0f0")
     .attr("stroke", "#ccc")
-    .attr("stroke-width", 2)
+    .attr("stroke-width", 1)
   
   // 创建颜色方案，考虑满意度和移动状态
   const getColor = (value, isSatisfied, isMoving) => {
@@ -713,7 +728,7 @@ export default {
   }
   
   // 添加网格线 - 仅当单元格足够大时才显示
-  if (cellSize >= 8) {
+  if (cellSize >= 5) { // 降低网格线显示阈值
     for (let i = 0; i <= this.gridSize; i++) {
       // 垂直线
       svg.append("line")
@@ -722,7 +737,7 @@ export default {
         .attr("x2", i * cellSize)
         .attr("y2", height)
         .attr("stroke", "#ddd")
-        .attr("stroke-width", 1)
+        .attr("stroke-width", 0.5)
       
       // 水平线
       svg.append("line")
@@ -731,7 +746,7 @@ export default {
         .attr("x2", width)
         .attr("y2", i * cellSize)
         .attr("stroke", "#ddd")
-        .attr("stroke-width", 1)
+        .attr("stroke-width", 0.5)
     }
   }
   
@@ -750,17 +765,16 @@ export default {
   
   // 添加单元格背景，颜色反映类型、满意度和移动状态
   this.cellRects = this.cells.append("rect")
-    .attr("width", cellSize)
-    .attr("height", cellSize)
+    .attr("width", cellSize - 0.5) // 略小于cellSize，创建间隙
+    .attr("height", cellSize - 0.5)
     .attr("fill", d => getColor(
       d.value, 
       d.isSatisfied, 
       this.movingAgents.has(`${d.y}-${d.x}`)
     ))
-    .attr("stroke", cellSize >= 8 ? "#ddd" : "none")
-    .attr("stroke-width", 1)
-    .attr("rx", Math.min(3, cellSize / 5))
-    .attr("ry", Math.min(3, cellSize / 5))
+    .attr("stroke", "none")
+    .attr("rx", Math.min(3, cellSize / 6)) // 增大圆角
+    .attr("ry", Math.min(3, cellSize / 6))
     .on("mouseover", (event, d) => {
       // 显示提示信息
       if (d.value !== 0) {
@@ -795,36 +809,28 @@ export default {
       d3.selectAll(".grid-tooltip").remove()
     })
   
-  // 始终添加文字标签，使用动态字体大小
-  this.cells.filter(d => d.value !== 0)
-    .append("text")
-    .attr("x", cellSize / 2)
-    .attr("y", cellSize / 2)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .attr("font-size", `${Math.max(cellSize / 3, 8)}px`) // 动态字体大小，最小8px
-    .attr("fill", "#fff")
-    .attr("font-weight", "bold") // 加粗文字，提高可读性
-    .text(d => d.value)
+  // 添加文字标签，降低显示阈值
+  if (cellSize >= 8) { // 降低文字显示阈值
+    this.cells.filter(d => d.value !== 0)
+      .append("text")
+      .attr("x", cellSize / 2)
+      .attr("y", cellSize / 2)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", `${Math.max(cellSize / 3.5, 9)}px`) // 使用更大的字体比例
+      .attr("fill", "#fff")
+      .attr("font-weight", "bold") // 加粗文字，提高可读性
+      .text(d => d.value)
+  }
+  
+  // 存储当前的cellSize供updateVisualization使用
+  this.currentCellSize = cellSize
 },
 
     updateVisualization() {
-  if (!this.cells) return
+  if (!this.cells || !this.currentCellSize) return
   
-  // 获取当前的cellSize（需要重新计算或从renderGrid获取）
-  const container = this.$refs.gridContainer
-  if (!container) return
-  
-  const containerWidth = container.clientWidth
-  const containerHeight = container.clientHeight
-  const margin = 40
-  const availableWidth = containerWidth - margin * 2
-  const availableHeight = containerHeight - margin * 2
-  
-  const cellSize = Math.min(
-    Math.floor(availableWidth / this.gridSize),
-    Math.floor(availableHeight / this.gridSize)
-  ) * 0.8
+  const cellSize = this.currentCellSize // 使用存储的cellSize
 
   // 创建颜色方案，考虑满意度和移动状态
   const getColor = (value, isSatisfied, isMoving) => {
@@ -863,19 +869,21 @@ export default {
   // 移除所有现有的文字标签
   this.cells.selectAll("text").remove()
 
-  // 重新添加文字标签
-  this.cells
-    .data(cellData)
-    .filter(d => d.value !== 0)
-    .append("text")
-    .attr("x", cellSize / 2)
-    .attr("y", cellSize / 2)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .attr("font-size", `${Math.max(cellSize / 3, 8)}px`)
-    .attr("fill", "#fff")
-    .attr("font-weight", "bold")
-    .text(d => d.value)
+  // 重新添加文字标签，仅当单元格足够大时显示
+  if (cellSize >= 8) { // 降低文字显示阈值
+    this.cells
+      .data(cellData)
+      .filter(d => d.value !== 0)
+      .append("text")
+      .attr("x", cellSize / 2)
+      .attr("y", cellSize / 2)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", `${Math.max(cellSize / 3.5, 9)}px`) // 使用更大的字体比例
+      .attr("fill", "#fff")
+      .attr("font-weight", "bold") // 加粗文字，提高可读性
+      .text(d => d.value)
+  }
 },
     
    renderHeatmap() {
@@ -1326,76 +1334,179 @@ updateHeatmap() {
         .attr("d", unsatisfiedLine)
     },
     // 更新收敛性数据
-    // 修正版本的收敛性数据更新方法
+    // 全新的收敛性分析算法
 updateConvergenceData() {
-    // 每10次迭代计算一次收敛率
-    if (this.iterations % 10 === 0 && this.iterations > 0) {
-        // 计算最近10次迭代的平均变化率
-        const recentIndices = this.historyData.segregationIndex.slice(-11) // 获取最近11个值
-        let changeSum = 0
-        
-        for (let i = 1; i < recentIndices.length; i++) {
-            changeSum += Math.abs(recentIndices[i] - recentIndices[i-1])
+    // 确保有足够的历史数据进行分析
+    if (this.historyData.segregationIndex.length < 5) return
+    
+    const indices = this.historyData.segregationIndex
+    const iterations = this.historyData.iterations
+    const currentIndex = parseFloat(this.segregationIndex)
+    const currentIteration = this.iterations
+    
+    // 1. 计算短期和长期变化率
+    const shortTermWindow = Math.min(5, indices.length - 1) // 最近5次迭代
+    const longTermWindow = Math.min(15, indices.length - 1) // 最近15次迭代
+    
+    // 短期变化率（最近5次）
+    const shortTermIndices = indices.slice(-shortTermWindow - 1)
+    const shortTermVariance = this.calculateVariance(shortTermIndices)
+    const shortTermSlope = this.calculateSlope(shortTermIndices)
+    
+    // 长期变化率（最近15次）
+    const longTermIndices = indices.slice(-longTermWindow - 1)
+    const longTermVariance = this.calculateVariance(longTermIndices)
+    const longTermSlope = this.calculateSlope(longTermIndices)
+    
+    // 2. 计算收敛速度 (基于指数衰减模型)
+    const recentChanges = []
+    for (let i = Math.max(1, indices.length - 10); i < indices.length; i++) {
+        recentChanges.push(Math.abs(indices[i] - indices[i-1]))
+    }
+    
+    const avgChangeRate = recentChanges.reduce((sum, val) => sum + val, 0) / recentChanges.length
+    const maxChangeRate = Math.max(...recentChanges)
+    
+    // 3. 收敛速度计算 (越小越接近收敛)
+    const convergenceSpeed = Math.exp(-avgChangeRate * 5) * 100 // 指数衰减模型
+    
+    // 4. 稳定性评估
+    const stabilityScore = this.calculateStabilityScore(shortTermVariance, longTermVariance, shortTermSlope)
+    
+    // 5. 收敛质量评估 (考虑趋势一致性)
+    const trendConsistency = this.calculateTrendConsistency(indices.slice(-10))
+    
+    // 6. 综合收敛评分
+    const convergenceScore = (convergenceSpeed * 0.4 + stabilityScore * 0.4 + trendConsistency * 0.2)
+    
+    // 7. 收敛状态判断
+    let convergenceStatus = 'diverging'
+    if (convergenceScore > 90 && avgChangeRate < 0.01) {
+        convergenceStatus = 'converged'
+    } else if (convergenceScore > 70 && avgChangeRate < 0.1) {
+        convergenceStatus = 'converging'
+    } else if (convergenceScore > 40) {
+        convergenceStatus = 'oscillating'
+    }
+    
+    // 8. 预测最终收敛值
+    const predictedFinalValue = this.predictFinalConvergenceValue(indices)
+    
+    // 9. 存储收敛数据
+    this.convergenceData.push({
+        iteration: currentIteration,
+        segregationIndex: currentIndex,
+        convergenceSpeed: Math.round(convergenceSpeed * 100) / 100,
+        stabilityScore: Math.round(stabilityScore * 100) / 100,
+        trendConsistency: Math.round(trendConsistency * 100) / 100,
+        overallScore: Math.round(convergenceScore * 100) / 100,
+        avgChangeRate: avgChangeRate,
+        maxChangeRate: maxChangeRate,
+        shortTermSlope: shortTermSlope,
+        longTermSlope: longTermSlope,
+        status: convergenceStatus,
+        predictedFinal: predictedFinalValue,
+        // 新增平滑曲线数据
+        smoothedIndex: this.calculateSmoothedValue(indices),
+        residual: currentIndex - this.calculateSmoothedValue(indices) // 残差
+    })
+    
+    // 10. 详细调试输出
+    console.log(`🔄 收敛分析 [迭代 ${currentIteration}]:`, {
+        当前隔离指数: currentIndex.toFixed(3),
+        平均变化率: avgChangeRate.toFixed(6),
+        收敛速度: convergenceSpeed.toFixed(2) + '%',
+        稳定性得分: stabilityScore.toFixed(2),
+        趋势一致性: trendConsistency.toFixed(2),
+        综合评分: convergenceScore.toFixed(2),
+        收敛状态: convergenceStatus,
+        预测最终值: predictedFinalValue.toFixed(3),
+        短期斜率: shortTermSlope.toFixed(6),
+        长期斜率: longTermSlope.toFixed(6)
+    })
+    
+    // 11. 收敛完成判断
+    if (convergenceStatus === 'converged' && this.convergenceData.length >= 3) {
+        const lastThreeStatuses = this.convergenceData.slice(-3).map(d => d.status)
+        if (lastThreeStatuses.every(status => status === 'converged')) {
+            console.log('🎯 系统已达到稳定收敛状态!')
+            // 可以选择在这里停止模拟或发出通知
         }
-        
-        const avgChange = changeSum / 10
-        
-        // 方案1: 基于变化率的指数衰减模型
-        // 变化率越小，收敛率越高
-        const convergenceRate = Math.min(100, 100 * Math.exp(-avgChange * 2))
-        
-        // 方案2: 基于相对变化的线性模型
-        // const maxExpectedChange = 5 // 预期的最大变化率
-        // const convergenceRate = Math.max(0, Math.min(100, 100 * (1 - avgChange / maxExpectedChange)))
-        
-        // 方案3: 基于历史趋势的收敛判断
-        // if (this.convergenceData.length >= 3) {
-        //     const recent3 = this.convergenceData.slice(-3).map(d => d.rate)
-        //     const trend = (recent3[2] - recent3[0]) / 2 // 趋势斜率
-        //     const stability = recent3.reduce((sum, val) => sum + Math.abs(val - recent3[1]), 0) / 3
-        //     const convergenceRate = Math.max(0, Math.min(100, 
-        //         100 * Math.exp(-avgChange * 2) * (1 - Math.abs(trend) * 0.1) * (1 - stability * 0.05)
-        //     ))
-        // }
-        
-        this.convergenceData.push({
-            iteration: this.iterations,
-            rate: convergenceRate,
-            avgChange: avgChange // 添加调试信息
-        })
-        
-        // 调试输出
-        console.log(`迭代 ${this.iterations}: 平均变化=${avgChange.toFixed(4)}, 收敛率=${convergenceRate.toFixed(2)}%`)
     }
 },
 
-// 额外的收敛性分析方法
-analyzeConvergence() {
-    if (this.historyData.segregationIndex.length < 20) return null
+// 辅助函数：计算方差
+calculateVariance(values) {
+    if (values.length < 2) return 0
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length
+    const squaredDiffs = values.map(val => Math.pow(val - mean, 2))
+    return squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length
+},
+
+// 辅助函数：计算斜率 (线性回归)
+calculateSlope(values) {
+    if (values.length < 2) return 0
+    const n = values.length
+    const x = Array.from({length: n}, (_, i) => i)
+    const y = values
     
-    const recent20 = this.historyData.segregationIndex.slice(-20)
+    const sumX = x.reduce((sum, val) => sum + val, 0)
+    const sumY = y.reduce((sum, val) => sum + val, 0)
+    const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0)
+    const sumXX = x.reduce((sum, val) => sum + val * val, 0)
     
-    // 计算方差（稳定性指标）
-    const mean = recent20.reduce((sum, val) => sum + val, 0) / recent20.length
-    const variance = recent20.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / recent20.length
-    const stability = Math.max(0, 100 * Math.exp(-variance))
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
+    return isNaN(slope) ? 0 : slope
+},
+
+// 辅助函数：计算稳定性得分
+calculateStabilityScore(shortTermVar, longTermVar, slope) {
+    // 方差越小越稳定，斜率越接近0越稳定
+    const varianceStability = Math.exp(-shortTermVar * 10) * 50
+    const slopeStability = Math.exp(-Math.abs(slope) * 100) * 50
+    return Math.min(100, varianceStability + slopeStability)
+},
+
+// 辅助函数：计算趋势一致性
+calculateTrendConsistency(values) {
+    if (values.length < 3) return 50
     
-    // 计算趋势（是否仍在变化）
-    const firstHalf = recent20.slice(0, 10).reduce((sum, val) => sum + val, 0) / 10
-    const secondHalf = recent20.slice(10).reduce((sum, val) => sum + val, 0) / 10
-    const trendStrength = Math.abs(secondHalf - firstHalf)
-    const trendConvergence = Math.max(0, 100 * Math.exp(-trendStrength * 0.5))
+    let consistentTrends = 0
+    let totalTrends = 0
     
-    // 综合收敛评分
-    const overallConvergence = (stability + trendConvergence) / 2
-    
-    return {
-        stability: stability,
-        trendConvergence: trendConvergence,
-        overall: overallConvergence,
-        variance: variance,
-        trendStrength: trendStrength
+    for (let i = 2; i < values.length; i++) {
+        const trend1 = values[i-1] - values[i-2] // 前一个趋势
+        const trend2 = values[i] - values[i-1]   // 当前趋势
+        
+        // 判断趋势是否一致（同向）
+        if ((trend1 > 0 && trend2 > 0) || (trend1 < 0 && trend2 < 0) || (Math.abs(trend1) < 0.01 && Math.abs(trend2) < 0.01)) {
+            consistentTrends++
+        }
+        totalTrends++
     }
+    
+    return totalTrends > 0 ? (consistentTrends / totalTrends) * 100 : 50
+},
+
+// 辅助函数：预测最终收敛值
+predictFinalConvergenceValue(indices) {
+    if (indices.length < 10) return indices[indices.length - 1]
+    
+    // 使用指数加权移动平均预测
+    const weights = indices.map((_, i) => Math.exp(i * 0.1)) // 指数权重
+    const weightedSum = indices.reduce((sum, val, i) => sum + val * weights[i], 0)
+    const weightSum = weights.reduce((sum, val) => sum + val, 0)
+    
+    return weightedSum / weightSum
+},
+
+// 辅助函数：计算平滑值 (移动平均)
+calculateSmoothedValue(indices) {
+    if (indices.length < 3) return indices[indices.length - 1]
+    
+    const windowSize = Math.min(5, indices.length)
+    const recentValues = indices.slice(-windowSize)
+    return recentValues.reduce((sum, val) => sum + val, 0) / recentValues.length
 },
     
     exportData() {
@@ -1968,7 +2079,7 @@ updateGauge() {
         .append("g")
         .attr("transform", `translate(${margin.left + width / 2}, ${margin.top + height / 2})`)
       
-      const radius = Math.min(width, height) / 2
+      const radius = Math.min(width, height) / 2.5 // 减小半径为饼图留出更多空间给图例
       
       // 准备数据
       const satisfiedType1 = this.satisfactionDistribution.satisfied.type1
@@ -2003,37 +2114,111 @@ updateGauge() {
       arcs.append("path")
         .attr("d", arc)
         .attr("fill", d => d.data.color)
+        .style("cursor", "pointer")
+        .on("mouseover", (event, d) => {
+          // 添加hover效果
+          d3.select(event.currentTarget).style("opacity", 0.8)
+          
+          // 移除可能存在的旧tooltip
+          d3.selectAll(".pie-tooltip").remove()
+          
+          // 计算总数用于百分比
+          const total = d3.sum(data, item => item.value)
+          const percentage = Math.round((d.data.value / total) * 100)
+          
+          // 创建tooltip
+          d3.select("body")
+            .append("div")
+            .attr("class", "pie-tooltip")
+            .style("position", "absolute")
+            .style("background", "rgba(0,0,0,0.9)")
+            .style("color", "white")
+            .style("padding", "10px")
+            .style("border-radius", "6px")
+            .style("font-size", "12px")
+            .style("pointer-events", "none")
+            .style("z-index", "9999")
+            .style("box-shadow", "0 2px 8px rgba(0,0,0,0.3)")
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 10) + "px")
+            .html(`
+              <div style="font-weight: bold; margin-bottom: 4px;">${d.data.name}</div>
+              <div>数量: ${d.data.value} 个</div>
+              <div>占比: ${percentage}%</div>
+            `)
+        })
+        .on("mouseout", (event, d) => {
+          // 移除hover效果
+          d3.select(event.currentTarget).style("opacity", 1)
+          
+          // 移除tooltip
+          d3.selectAll(".pie-tooltip").remove()
+        })
       
-      // 添加标签
+      // 添加百分比标签在扇形内部
       arcs.append("text")
         .attr("transform", d => `translate(${arc.centroid(d)})`)
         .attr("text-anchor", "middle")
-                .attr("font-size", "12px")
+        .attr("font-size", "11px")
         .attr("fill", "#fff")
-        .text(d => d.data.value > 0 ? `${Math.round(d.data.value / d3.sum(data, d => d.value) * 100)}%` : "")
+        .attr("font-weight", "bold")
+        .text(d => {
+          const percentage = Math.round(d.data.value / d3.sum(data, d => d.value) * 100)
+          return percentage > 5 ? `${percentage}%` : "" // 只显示大于5%的标签
+        })
       
-      // 添加图例
+      // 将图例放在右上角
       const legend = svg.append("g")
         .attr("class", "legend")
-        .attr("transform", `translate(${radius + 20}, -${radius / 2})`)
+        .attr("transform", `translate(${radius + 15}, ${-radius})`) // 放在饼图右上角
       
       const legendItems = legend.selectAll(".legend-item")
         .data(data)
         .enter()
         .append("g")
         .attr("class", "legend-item")
-        .attr("transform", (d, i) => `translate(0, ${i * 20})`)
+        .attr("transform", (d, i) => `translate(0, ${i * 15})`) // 减少行间距
       
+      // 图例色块
       legendItems.append("rect")
-        .attr("width", 12)
-        .attr("height", 12)
+        .attr("width", 15)
+        .attr("height", 15)
         .attr("fill", d => d.color)
-      
-      legendItems.append("text")
-        .attr("x", 20)
-        .attr("y", 10)
-        .attr("font-size", "10px")
-        .text(d => d.name)
+        .attr("rx", 3) // 圆角
+        .style("cursor", "pointer")
+        .on("mouseover", (event, d) => {
+          // 移除可能存在的旧tooltip
+          d3.selectAll(".pie-tooltip").remove()
+          
+          // 计算总数用于百分比
+          const total = d3.sum(data, item => item.value)
+          const percentage = Math.round((d.value / total) * 100)
+          
+          // 创建tooltip
+          d3.select("body")
+            .append("div")
+            .attr("class", "pie-tooltip")
+            .style("position", "absolute")
+            .style("background", "rgba(0,0,0,0.9)")
+            .style("color", "white")
+            .style("padding", "10px")
+            .style("border-radius", "6px")
+            .style("font-size", "12px")
+            .style("pointer-events", "none")
+            .style("z-index", "9999")
+            .style("box-shadow", "0 2px 8px rgba(0,0,0,0.3)")
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 10) + "px")
+            .html(`
+              <div style="font-weight: bold; margin-bottom: 4px;">${d.name}</div>
+              <div>数量: ${d.value} 个</div>
+              <div>占比: ${percentage}%</div>
+            `)
+        })
+        .on("mouseout", (event, d) => {
+          // 移除tooltip
+          d3.selectAll(".pie-tooltip").remove()
+        })
     },
     
     // 更新饼图
@@ -2055,7 +2240,7 @@ updateGauge() {
       const containerWidth = container.clientWidth
       const containerHeight = 180
       
-      const margin = { top: 20, right: 20, bottom: 40, left: 40 }
+      const margin = { top: 20, right: 60, bottom: 40, left: 50 }
       const width = containerWidth - margin.left - margin.right
       const height = containerHeight - margin.top - margin.bottom
       
@@ -2066,7 +2251,7 @@ updateGauge() {
         .append("g")
         .attr("transform", `translate(${margin.left}, ${margin.top})`)
       
-      // 如果没有数据，显示提示信息
+      // 如果没有收敛数据，显示提示信息
       if (this.convergenceData.length === 0) {
         svg.append("text")
           .attr("x", width / 2)
@@ -2082,14 +2267,30 @@ updateGauge() {
         .domain([0, d3.max(this.convergenceData, d => d.iteration)])
         .range([0, width])
       
-      const y = d3.scaleLinear()
+      // 隔离指数的比例尺 (主要Y轴)
+      const yIndex = d3.scaleLinear()
+        .domain([0, Math.max(100, d3.max(this.convergenceData, d => d.segregationIndex) * 1.1)])
+        .range([height, 0])
+      
+      // 收敛得分的比例尺 (次要Y轴)
+      const yScore = d3.scaleLinear()
         .domain([0, 100])
         .range([height, 0])
       
       // 创建线条生成器
-      const line = d3.line()
+      const indexLine = d3.line()
         .x(d => x(d.iteration))
-        .y(d => y(d.rate))
+        .y(d => yIndex(d.segregationIndex))
+        .curve(d3.curveMonotoneX)
+      
+      const smoothedLine = d3.line()
+        .x(d => x(d.iteration))
+        .y(d => yIndex(d.smoothedIndex))
+        .curve(d3.curveMonotoneX)
+      
+      const scoreLine = d3.line()
+        .x(d => x(d.iteration))
+        .y(d => yScore(d.overallScore))
         .curve(d3.curveMonotoneX)
       
       // 添加坐标轴
@@ -2099,63 +2300,169 @@ updateGauge() {
         .call(d3.axisBottom(x).ticks(5))
       
       svg.append("g")
-        .attr("class", "y-axis")
-        .call(d3.axisLeft(y).ticks(5))
+        .attr("class", "y-axis-left")
+        .call(d3.axisLeft(yIndex).ticks(5))
+      
+      svg.append("g")
+        .attr("class", "y-axis-right")
+        .attr("transform", `translate(${width}, 0)`)
+        .call(d3.axisRight(yScore).ticks(5))
       
       // 添加坐标轴标签
       svg.append("text")
         .attr("class", "x-label")
         .attr("x", width / 2)
-        .attr("y", height + 30)
+        .attr("y", height + 35)
         .attr("text-anchor", "middle")
-        .attr("font-size", "12px")
+        .attr("font-size", "11px")
         .text("迭代次数")
       
       svg.append("text")
-        .attr("class", "y-label")
+        .attr("class", "y-label-left")
         .attr("transform", "rotate(-90)")
         .attr("x", -height / 2)
-        .attr("y", -30)
+        .attr("y", -35)
         .attr("text-anchor", "middle")
-        .attr("font-size", "12px")
-        .text("收敛率 (%)")
-      
-      // 添加参考线
-      svg.append("line")
-        .attr("x1", 0)
-        .attr("y1", y(90))
-        .attr("x2", width)
-        .attr("y2", y(90))
-        .attr("stroke", "#e74c3c")
-        .attr("stroke-dasharray", "3,3")
-        .attr("stroke-width", 1)
+        .attr("font-size", "11px")
+        .attr("fill", "#e74c3c")
+        .text("隔离指数")
       
       svg.append("text")
-        .attr("x", 5)
-        .attr("y", y(90) - 5)
-        .attr("font-size", "10px")
-        .attr("fill", "#e74c3c")
-        .text("90% 收敛")
+        .attr("class", "y-label-right")
+        .attr("transform", "rotate(90)")
+        .attr("x", height / 2)
+        .attr("y", -width - 45)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "11px")
+        .attr("fill", "#3498db")
+        .text("收敛得分 (%)")
       
-      // 绘制线条
+      // 添加网格线
+      svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", `translate(0, ${height})`)
+        .call(d3.axisBottom(x)
+          .tickSize(-height)
+          .tickFormat("")
+        )
+        .style("stroke-dasharray", "2,2")
+        .style("opacity", 0.3)
+      
+      svg.append("g")
+        .attr("class", "grid")
+        .call(d3.axisLeft(yIndex)
+          .tickSize(-width)
+          .tickFormat("")
+        )
+        .style("stroke-dasharray", "2,2")
+        .style("opacity", 0.3)
+      
+      // 绘制隔离指数原始曲线
       svg.append("path")
         .datum(this.convergenceData)
-        .attr("class", "convergence-line")
+        .attr("class", "index-line")
+        .attr("fill", "none")
+        .attr("stroke", "#e74c3c")
+        .attr("stroke-width", 2)
+        .attr("stroke-opacity", 0.7)
+        .attr("d", indexLine)
+      
+      // 绘制隔离指数平滑曲线
+      svg.append("path")
+        .datum(this.convergenceData)
+        .attr("class", "smoothed-line")
+        .attr("fill", "none")
+        .attr("stroke", "#c0392b")
+        .attr("stroke-width", 3)
+        .attr("d", smoothedLine)
+      
+      // 绘制收敛得分曲线
+      svg.append("path")
+        .datum(this.convergenceData)
+        .attr("class", "score-line")
         .attr("fill", "none")
         .attr("stroke", "#3498db")
         .attr("stroke-width", 2)
-        .attr("d", line)
+        .attr("d", scoreLine)
       
-      // 添加数据点
-      svg.selectAll(".convergence-point")
-        .data(this.convergenceData)
+      // 添加收敛状态标记点
+      const statusColors = {
+        'converged': '#27ae60',
+        'converging': '#f39c12',
+        'oscillating': '#e67e22',
+        'diverging': '#e74c3c'
+      }
+      
+      svg.selectAll(".status-point")
+        .data(this.convergenceData.filter((d, i) => i % 3 === 0)) // 每3个点显示一个状态
         .enter()
         .append("circle")
-        .attr("class", "convergence-point")
+        .attr("class", "status-point")
         .attr("cx", d => x(d.iteration))
-        .attr("cy", d => y(d.rate))
-        .attr("r", 3)
-        .attr("fill", "#3498db")
+        .attr("cy", d => yIndex(d.segregationIndex))
+        .attr("r", 4)
+        .attr("fill", d => statusColors[d.status] || '#95a5a6')
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1)
+      
+      // 添加预测线 (如果有足够数据)
+      if (this.convergenceData.length >= 10) {
+        const lastPoint = this.convergenceData[this.convergenceData.length - 1]
+        const predictedY = yIndex(lastPoint.predictedFinal)
+        
+        svg.append("line")
+          .attr("class", "prediction-line")
+          .attr("x1", x(lastPoint.iteration))
+          .attr("y1", yIndex(lastPoint.segregationIndex))
+          .attr("x2", width)
+          .attr("y2", predictedY)
+          .attr("stroke", "#9b59b6")
+          .attr("stroke-width", 2)
+          .attr("stroke-dasharray", "5,5")
+          .attr("opacity", 0.7)
+        
+        // 预测值标签
+        svg.append("text")
+          .attr("x", width - 5)
+          .attr("y", predictedY - 5)
+          .attr("text-anchor", "end")
+          .attr("font-size", "10px")
+          .attr("fill", "#9b59b6")
+          .text(`预测: ${lastPoint.predictedFinal.toFixed(1)}`)
+      }
+      
+      // 添加图例
+      const legend = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(10, 10)`)
+      
+      const legendItems = [
+        { name: "隔离指数", color: "#e74c3c", style: "solid" },
+        { name: "平滑曲线", color: "#c0392b", style: "solid" },
+        { name: "收敛得分", color: "#3498db", style: "solid" },
+        { name: "预测趋势", color: "#9b59b6", style: "dashed" }
+      ]
+      
+      legendItems.forEach((item, i) => {
+        const legendItem = legend.append("g")
+          .attr("transform", `translate(0, ${i * 15})`)
+        
+        legendItem.append("line")
+          .attr("x1", 0)
+          .attr("y1", 5)
+          .attr("x2", 15)
+          .attr("y2", 5)
+          .attr("stroke", item.color)
+          .attr("stroke-width", 2)
+          .attr("stroke-dasharray", item.style === "dashed" ? "3,3" : "0")
+        
+        legendItem.append("text")
+          .attr("x", 20)
+          .attr("y", 5)
+          .attr("alignment-baseline", "middle")
+          .attr("font-size", "9px")
+          .text(item.name)
+      })
     },
     
     // 更新收敛性图表
@@ -2200,22 +2507,33 @@ updateGauge() {
 
 .grid-container {
   width: 100%;
-  height: 100vh;
+  height: 100%; /* 固定合理高度，避免超出页面 */
+  max-height: 700px; /* 增大最大高度限制 */
+  min-height: 400px; /* 增大最小高度 */
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: visible; /* 确保内容可见 */
+  border: 1px solid #e1e8ed; /* 添加边框便于观察 */
+  border-radius: 4px;
+  background-color: #fafbfc; /* 浅色背景 */
 }
 
 .grid-flex-container {
-  height: calc(100vh - 12.5rem);
+  height: 100%; /* 固定合理高度 */
+  max-height: 750px; /* 增大最大高度限制 */
   width: 100%;
+  min-height: 400px; /* 增大最小高度 */
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: visible; /* 确保内容可见 */
+  padding: 5px; /* 减少内边距 */
 }
 
 .grid-card {
-  height: calc(100vh - 9.375rem);
+  height: 500px; /* 固定合理高度 */
+  max-height: 800px; /* 增大最大高度限制 */
 }
 
 .grid-header {
@@ -2328,6 +2646,21 @@ updateGauge() {
     max-width: 35rem;
   }
   
+  .grid-container {
+    max-height: 900px; /* 大屏幕允许更大高度 */
+    min-height: 500px;
+  }
+  
+  .grid-flex-container {
+    max-height: 950px;
+    min-height: 500px;
+  }
+  
+  .grid-card {
+    height: 600px;
+    max-height: 1000px;
+  }
+  
   .dashboard-card {
     height: 24rem;
   }
@@ -2355,6 +2688,21 @@ updateGauge() {
     flex: 0 0 24rem; /* 1200px屏幕保持较大宽度 */
     min-width: 24rem;
     max-width: 26rem;
+  }
+  
+  .grid-container {
+    max-height: 800px; /* 中大屏幕适当增大 */
+    min-height: 450px;
+  }
+  
+  .grid-flex-container {
+    max-height: 850px;
+    min-height: 450px;
+  }
+  
+  .grid-card {
+    height: 550px;
+    max-height: 900px;
   }
   
   .dashboard-card {
