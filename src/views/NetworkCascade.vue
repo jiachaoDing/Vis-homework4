@@ -54,306 +54,324 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import * as d3 from 'd3'
 
-export default {
-  name: 'NetworkCascade',
-  data() {
-    return {
-      nodeCount: 50,
-      threshold: 0.3,
-      seedCount: 3,
-      delayRange: 5,
-      nodes: [],
-      links: [],
-      currentStep: 0,
-      adoptedCount: 0,
-      adoptionRate: 0,
-      averageDelay: 0,
-      isRunning: false,
-      intervalId: null
-    }
-  },
-  mounted() {
-    this.generateNetwork()
-  },
-  methods: {
-    generateNetwork() {
-      // 生成节点
-      this.nodes = Array.from({ length: this.nodeCount }, (_, i) => ({
-        id: i,
-        state: 'susceptible', // susceptible, adopted, aware
-        adoptionTime: null,
-        delay: Math.floor(Math.random() * this.delayRange) + 1,
-        awarenessTime: null,
-        neighbors: []
-      }))
-      
-      // 生成小世界网络
-      this.generateSmallWorldNetwork()
-      
-      // 计算邻居关系
-      this.calculateNeighbors()
-      
-      this.renderNetwork()
-    },
-    
-    generateSmallWorldNetwork() {
-      this.links = []
-      const k = 4 // 每个节点的初始连接数
-      
-      // 创建环形连接
-      for (let i = 0; i < this.nodeCount; i++) {
-        for (let j = 1; j <= k / 2; j++) {
-          const target = (i + j) % this.nodeCount
-          this.links.push({ source: i, target })
-        }
-      }
-      
-      // 随机重连
-      const rewireProb = 0.3
-      this.links = this.links.map(link => {
-        if (Math.random() < rewireProb) {
-          let newTarget
-          do {
-            newTarget = Math.floor(Math.random() * this.nodeCount)
-          } while (newTarget === link.source)
-          
-          return { source: link.source, target: newTarget }
-        }
-        return link
-      })
-    },
-    
-    calculateNeighbors() {
-      // 重置邻居列表
-      this.nodes.forEach(node => node.neighbors = [])
-      
-      // 构建邻居关系
-      this.links.forEach(link => {
-        this.nodes[link.source].neighbors.push(link.target)
-        this.nodes[link.target].neighbors.push(link.source)
-      })
-    },
-    
-    startCascade() {
-      this.resetCascade()
-      
-      // 随机选择种子节点
-      const seedIndices = []
-      while (seedIndices.length < this.seedCount) {
-        const index = Math.floor(Math.random() * this.nodeCount)
-        if (!seedIndices.includes(index)) {
-          seedIndices.push(index)
-        }
-      }
-      
-      // 设置种子节点为已采纳状态
-      seedIndices.forEach(index => {
-        this.nodes[index].state = 'adopted'
-        this.nodes[index].adoptionTime = 0
-        this.nodes[index].awarenessTime = 0
-      })
-      
-      this.updateStatistics()
-      this.updateVisualization()
-      
-      this.isRunning = true
-      this.intervalId = setInterval(() => {
-        const hasChange = this.simulateOneStep()
-        if (!hasChange) {
-          this.stopCascade()
-        }
-      }, 500)
-    },
-    
-    simulateOneStep() {
-      this.currentStep++
-      let hasChange = false
-      
-      // 处理知晓到行动的延时
-      this.nodes.forEach(node => {
-        if (node.state === 'aware' && 
-            node.awarenessTime !== null && 
-            this.currentStep - node.awarenessTime >= node.delay) {
-          node.state = 'adopted'
-          node.adoptionTime = this.currentStep
-          hasChange = true
-        }
-      })
-      
-      // 传播给邻居
-      const newlyAware = []
-      this.nodes.forEach(node => {
-        if (node.state === 'adopted') {
-          node.neighbors.forEach(neighborId => {
-            const neighbor = this.nodes[neighborId]
-            if (neighbor.state === 'susceptible') {
-              // 计算已采纳的邻居比例
-              const adoptedNeighbors = neighbor.neighbors.filter(nId => 
-                this.nodes[nId].state === 'adopted'
-              ).length
-              
-              const adoptionRatio = adoptedNeighbors / neighbor.neighbors.length
-              
-              if (adoptionRatio >= this.threshold) {
-                newlyAware.push(neighborId)
-              }
-            }
-          })
-        }
-      })
-      
-      // 更新新知晓的节点
-      newlyAware.forEach(nodeId => {
-        if (this.nodes[nodeId].state === 'susceptible') {
-          this.nodes[nodeId].state = 'aware'
-          this.nodes[nodeId].awarenessTime = this.currentStep
-          hasChange = true
-        }
-      })
-      
-      this.updateStatistics()
-      this.updateVisualization()
-      
-      return hasChange
-    },
-    
-    stopCascade() {
-      this.isRunning = false
-      if (this.intervalId) {
-        clearInterval(this.intervalId)
-        this.intervalId = null
-      }
-    },
-    
-    resetCascade() {
-      this.currentStep = 0
-      this.nodes.forEach(node => {
-        node.state = 'susceptible'
-        node.adoptionTime = null
-        node.awarenessTime = null
-      })
-      this.updateStatistics()
-      this.updateVisualization()
-    },
-    
-    updateStatistics() {
-      this.adoptedCount = this.nodes.filter(node => node.state === 'adopted').length
-      this.adoptionRate = ((this.adoptedCount / this.nodeCount) * 100).toFixed(1)
-      
-      const adoptedNodes = this.nodes.filter(node => node.adoptionTime !== null)
-      if (adoptedNodes.length > 0) {
-        const totalDelay = adoptedNodes.reduce((sum, node) => 
-          sum + (node.adoptionTime - (node.awarenessTime || 0)), 0)
-        this.averageDelay = (totalDelay / adoptedNodes.length).toFixed(2)
-      } else {
-        this.averageDelay = 0
-      }
-    },
-    
-    renderNetwork() {
-      const container = this.$refs.cascadeContainer
-      d3.select(container).selectAll("*").remove()
-      
-      const width = 600
-      const height = 400
-      
-      const svg = d3.select(container)
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height)
-      
-      this.simulation = d3.forceSimulation(this.nodes)
-        .force("link", d3.forceLink(this.links).id(d => d.id).distance(50))
-        .force("charge", d3.forceManyBody().strength(-100))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-      
-      this.linkSelection = svg.append("g")
-        .selectAll("line")
-        .data(this.links)
-        .enter().append("line")
-        .attr("stroke", "#999")
-        .attr("stroke-opacity", 0.6)
-        .attr("stroke-width", 1)
-      
-      this.nodeSelection = svg.append("g")
-        .selectAll("circle")
-        .data(this.nodes)
-        .enter().append("circle")
-        .attr("r", 6)
-        .attr("fill", this.getNodeColor)
-        .call(d3.drag()
-          .on("start", this.dragstarted)
-          .on("drag", this.dragged)
-          .on("end", this.dragended))
-      
-      this.nodeSelection.append("title")
-        .text(d => `节点 ${d.id}\n状态: ${this.getStateText(d.state)}\n延时: ${d.delay}`)
-      
-      this.simulation.on("tick", () => {
-        this.linkSelection
-          .attr("x1", d => d.source.x)
-          .attr("y1", d => d.source.y)
-          .attr("x2", d => d.target.x)
-          .attr("y2", d => d.target.y)
-        
-        this.nodeSelection
-          .attr("cx", d => d.x)
-          .attr("cy", d => d.y)
-      })
-    },
-    
-    updateVisualization() {
-      if (this.nodeSelection) {
-        this.nodeSelection
-          .attr("fill", this.getNodeColor)
-          .select("title")
-          .text(d => `节点 ${d.id}\n状态: ${this.getStateText(d.state)}\n延时: ${d.delay}`)
-      }
-    },
-    
-    getNodeColor(d) {
-      switch (d.state) {
-        case 'susceptible': return '#cccccc'
-        case 'aware': return '#ffa500'
-        case 'adopted': return '#ff4444'
-        default: return '#cccccc'
-      }
-    },
-    
-    getStateText(state) {
-      switch (state) {
-        case 'susceptible': return '易感'
-        case 'aware': return '知晓'
-        case 'adopted': return '采纳'
-        default: return '未知'
-      }
-    },
-    
-    dragstarted(event, d) {
-      if (!event.active) this.simulation.alphaTarget(0.3).restart()
-      d.fx = d.x
-      d.fy = d.y
-    },
-    
-    dragged(event, d) {
-      d.fx = event.x
-      d.fy = event.y
-    },
-    
-    dragended(event, d) {
-      if (!event.active) this.simulation.alphaTarget(0)
-      d.fx = null
-      d.fy = null
-    }
-  },
+// 响应式数据
+const nodeCount = ref(50)
+const threshold = ref(0.3)
+const seedCount = ref(3)
+const delayRange = ref(5)
+const nodes = ref([])
+const links = ref([])
+const currentStep = ref(0)
+const adoptedCount = ref(0)
+const adoptionRate = ref(0)
+const averageDelay = ref(0)
+const isRunning = ref(false)
+const intervalId = ref(null)
+
+// DOM引用
+const cascadeContainer = ref(null)
+
+// D3相关变量
+let simulation = null
+let linkSelection = null
+let nodeSelection = null
+
+// 生成网络
+const generateNetwork = () => {
+  // 生成节点
+  nodes.value = Array.from({ length: nodeCount.value }, (_, i) => ({
+    id: i,
+    state: 'susceptible', // susceptible, adopted, aware
+    adoptionTime: null,
+    delay: Math.floor(Math.random() * delayRange.value) + 1,
+    awarenessTime: null,
+    neighbors: []
+  }))
   
-  beforeUnmount() {
-    this.stopCascade()
+  // 生成小世界网络
+  generateSmallWorldNetwork()
+  
+  // 计算邻居关系
+  calculateNeighbors()
+  
+  renderNetwork()
+}
+
+// 生成小世界网络
+const generateSmallWorldNetwork = () => {
+  links.value = []
+  const k = 4 // 每个节点的初始连接数
+  
+  // 创建环形连接
+  for (let i = 0; i < nodeCount.value; i++) {
+    for (let j = 1; j <= k / 2; j++) {
+      const target = (i + j) % nodeCount.value
+      links.value.push({ source: i, target })
+    }
+  }
+  
+  // 随机重连
+  const rewireProb = 0.3
+  links.value = links.value.map(link => {
+    if (Math.random() < rewireProb) {
+      let newTarget
+      do {
+        newTarget = Math.floor(Math.random() * nodeCount.value)
+      } while (newTarget === link.source)
+      
+      return { source: link.source, target: newTarget }
+    }
+    return link
+  })
+}
+
+// 计算邻居关系
+const calculateNeighbors = () => {
+  // 重置邻居列表
+  nodes.value.forEach(node => node.neighbors = [])
+  
+  // 构建邻居关系
+  links.value.forEach(link => {
+    nodes.value[link.source].neighbors.push(link.target)
+    nodes.value[link.target].neighbors.push(link.source)
+  })
+}
+
+// 开始扩散
+const startCascade = () => {
+  resetCascade()
+  
+  // 随机选择种子节点
+  const seedIndices = []
+  while (seedIndices.length < seedCount.value) {
+    const index = Math.floor(Math.random() * nodeCount.value)
+    if (!seedIndices.includes(index)) {
+      seedIndices.push(index)
+    }
+  }
+  
+  // 设置种子节点为已采纳状态
+  seedIndices.forEach(index => {
+    nodes.value[index].state = 'adopted'
+    nodes.value[index].adoptionTime = 0
+    nodes.value[index].awarenessTime = 0
+  })
+  
+  updateStatistics()
+  updateVisualization()
+  
+  isRunning.value = true
+  intervalId.value = setInterval(() => {
+    const hasChange = simulateOneStep()
+    if (!hasChange) {
+      stopCascade()
+    }
+  }, 500)
+}
+
+// 模拟一步
+const simulateOneStep = () => {
+  currentStep.value++
+  let hasChange = false
+  
+  // 处理知晓到行动的延时
+  nodes.value.forEach(node => {
+    if (node.state === 'aware' && 
+        node.awarenessTime !== null && 
+        currentStep.value - node.awarenessTime >= node.delay) {
+      node.state = 'adopted'
+      node.adoptionTime = currentStep.value
+      hasChange = true
+    }
+  })
+  
+  // 传播给邻居
+  const newlyAware = []
+  nodes.value.forEach(node => {
+    if (node.state === 'adopted') {
+      node.neighbors.forEach(neighborId => {
+        const neighbor = nodes.value[neighborId]
+        if (neighbor.state === 'susceptible') {
+          // 计算已采纳的邻居比例
+          const adoptedNeighbors = neighbor.neighbors.filter(nId => 
+            nodes.value[nId].state === 'adopted'
+          ).length
+          
+          const adoptionRatio = adoptedNeighbors / neighbor.neighbors.length
+          
+          if (adoptionRatio >= threshold.value) {
+            newlyAware.push(neighborId)
+          }
+        }
+      })
+    }
+  })
+  
+  // 更新新知晓的节点
+  newlyAware.forEach(nodeId => {
+    if (nodes.value[nodeId].state === 'susceptible') {
+      nodes.value[nodeId].state = 'aware'
+      nodes.value[nodeId].awarenessTime = currentStep.value
+      hasChange = true
+    }
+  })
+  
+  updateStatistics()
+  updateVisualization()
+  
+  return hasChange
+}
+
+// 停止扩散
+const stopCascade = () => {
+  isRunning.value = false
+  if (intervalId.value) {
+    clearInterval(intervalId.value)
+    intervalId.value = null
   }
 }
+
+// 重置扩散
+const resetCascade = () => {
+  currentStep.value = 0
+  nodes.value.forEach(node => {
+    node.state = 'susceptible'
+    node.adoptionTime = null
+    node.awarenessTime = null
+  })
+  updateStatistics()
+  updateVisualization()
+}
+
+// 更新统计信息
+const updateStatistics = () => {
+  adoptedCount.value = nodes.value.filter(node => node.state === 'adopted').length
+  adoptionRate.value = ((adoptedCount.value / nodeCount.value) * 100).toFixed(1)
+  
+  const adoptedNodes = nodes.value.filter(node => node.adoptionTime !== null)
+  if (adoptedNodes.length > 0) {
+    const totalDelay = adoptedNodes.reduce((sum, node) => 
+      sum + (node.adoptionTime - (node.awarenessTime || 0)), 0)
+    averageDelay.value = (totalDelay / adoptedNodes.length).toFixed(2)
+  } else {
+    averageDelay.value = 0
+  }
+}
+
+// 渲染网络
+const renderNetwork = () => {
+  const container = cascadeContainer.value
+  d3.select(container).selectAll("*").remove()
+  
+  const width = 600
+  const height = 400
+  
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+  
+  simulation = d3.forceSimulation(nodes.value)
+    .force("link", d3.forceLink(links.value).id(d => d.id).distance(50))
+    .force("charge", d3.forceManyBody().strength(-100))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+  
+  linkSelection = svg.append("g")
+    .selectAll("line")
+    .data(links.value)
+    .enter().append("line")
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .attr("stroke-width", 1)
+  
+  nodeSelection = svg.append("g")
+    .selectAll("circle")
+    .data(nodes.value)
+    .enter().append("circle")
+    .attr("r", 6)
+    .attr("fill", getNodeColor)
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended))
+  
+  nodeSelection.append("title")
+    .text(d => `节点 ${d.id}\n状态: ${getStateText(d.state)}\n延时: ${d.delay}`)
+  
+  simulation.on("tick", () => {
+    linkSelection
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y)
+    
+    nodeSelection
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y)
+  })
+}
+
+// 更新可视化
+const updateVisualization = () => {
+  if (nodeSelection) {
+    nodeSelection
+      .attr("fill", getNodeColor)
+      .select("title")
+      .text(d => `节点 ${d.id}\n状态: ${getStateText(d.state)}\n延时: ${d.delay}`)
+  }
+}
+
+// 获取节点颜色
+const getNodeColor = (d) => {
+  switch (d.state) {
+    case 'susceptible': return '#cccccc'
+    case 'aware': return '#ffa500'
+    case 'adopted': return '#ff4444'
+    default: return '#cccccc'
+  }
+}
+
+// 获取状态文本
+const getStateText = (state) => {
+  switch (state) {
+    case 'susceptible': return '易感'
+    case 'aware': return '知晓'
+    case 'adopted': return '采纳'
+    default: return '未知'
+  }
+}
+
+// 拖拽事件处理
+const dragstarted = (event, d) => {
+  if (!event.active) simulation.alphaTarget(0.3).restart()
+  d.fx = d.x
+  d.fy = d.y
+}
+
+const dragged = (event, d) => {
+  d.fx = event.x
+  d.fy = event.y
+}
+
+const dragended = (event, d) => {
+  if (!event.active) simulation.alphaTarget(0)
+  d.fx = null
+  d.fy = null
+}
+
+// 组件挂载时初始化
+onMounted(() => {
+  generateNetwork()
+})
+
+// 组件卸载前清理
+onBeforeUnmount(() => {
+  stopCascade()
+})
 </script>
 
 <style scoped>
